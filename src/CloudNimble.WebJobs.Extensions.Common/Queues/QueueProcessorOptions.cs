@@ -1,0 +1,54 @@
+﻿// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License.
+
+using Microsoft.Extensions.Logging;
+using System;
+
+namespace CloudNimble.WebJobs.Extensions.Common.Queues
+{
+
+    /// <summary>
+    /// Provides options input for creating <see cref="QueueProcessor"/> instances.
+    /// </summary>
+    public class QueueProcessorOptions<TQueueMessage>
+        where TQueueMessage : IQueueMessage
+    {
+
+        /// <summary>
+        /// Constructs a new instance.
+        /// </summary>
+        /// <param name="queue">The queue the <see cref="QueueProcessor"/> will operate on.</param>
+        /// <param name="loggerFactory">The <see cref="ILoggerFactory"/> to create an <see cref="ILogger"/> from.</param>
+        /// <param name="options">The queue configuration.</param>
+        /// <param name="poisonQueue">The queue to move messages to when unable to process a message after the maximum dequeue count has been exceeded. May be null.</param>
+        internal QueueProcessorOptions(IQueueClient<TQueueMessage> queue, ILoggerFactory loggerFactory, QueuesOptionsBase options, IQueueClient<TQueueMessage> poisonQueue = null)
+        {
+            Queue = queue ?? throw new ArgumentNullException(nameof(queue));
+            PoisonQueue = poisonQueue;
+            Logger = loggerFactory?.CreateLogger<QueueProcessor>();
+            Options = options.Clone();
+        }
+
+        /// <summary>
+        /// Gets the queue the <see cref="QueueProcessor"/> will operate on.
+        /// </summary>
+        public IQueueClient<TQueueMessage> Queue { get; private set; }
+
+        /// <summary>
+        /// Gets the queue to move messages to when unable to process a message after the maximum dequeue count has been exceeded. May be null.
+        /// </summary>
+        public IQueueClient<TQueueMessage> PoisonQueue { get; private set; }
+
+        /// <summary>
+        /// Gets the <see cref="ILogger"/>.
+        /// </summary>
+        public ILogger Logger { get; private set; }
+
+        /// <summary>
+        /// Gets the queue configuration.
+        /// </summary>
+        public QueuesOptionsBase Options { get; private set; }
+
+    }
+
+}
