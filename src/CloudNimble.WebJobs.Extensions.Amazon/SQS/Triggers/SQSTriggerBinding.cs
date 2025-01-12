@@ -18,7 +18,6 @@ using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Threading.Tasks;
 
 namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Triggers
@@ -44,6 +43,7 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Triggers
         private readonly IObjectToTypeConverter<SQSMessage> _converter;
         private readonly IQueueProcessorFactory _queueProcessorFactory;
         private readonly QueueMessageCausalityManager _queueCausalityManager;
+        private readonly IQueueRequestExceptionClassifier _exceptionClassifier;
         private readonly ConcurrencyManager _concurrencyManager;
         private readonly IDrainModeManager _drainModeManager;
 
@@ -61,6 +61,7 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Triggers
             ILoggerFactory loggerFactory,
             IQueueProcessorFactory queueProcessorFactory,
             QueueMessageCausalityManager queueCausalityManager,
+            IQueueRequestExceptionClassifier exceptionClassifier,
             ConcurrencyManager concurrencyManager,
             IDrainModeManager drainModeManager)
         {
@@ -71,6 +72,7 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Triggers
             _exceptionHandler = exceptionHandler ?? throw new ArgumentNullException(nameof(exceptionHandler));
             _messageEnqueuedWatcherSetter = messageEnqueuedWatcherSetter ?? throw new ArgumentNullException(nameof(messageEnqueuedWatcherSetter));
             _queueCausalityManager = queueCausalityManager ?? throw new ArgumentNullException(nameof(queueCausalityManager));
+            _exceptionClassifier = exceptionClassifier ?? throw new ArgumentNullException(nameof(exceptionClassifier));
             _concurrencyManager = concurrencyManager ?? throw new ArgumentNullException(nameof(concurrencyManager));
 
             _parameterName = parameterName;
@@ -164,7 +166,8 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Triggers
                 _queueCausalityManager,
                 context.Descriptor,
                 _concurrencyManager,
-                drainModeManager: _drainModeManager);
+                _drainModeManager,
+                _exceptionClassifier);
 
             return factory.CreateAsync(context.CancellationToken);
         }

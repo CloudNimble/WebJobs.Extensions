@@ -25,8 +25,7 @@ namespace CloudNimble.WebJobs.Extensions.Common.Queues
     /// <summary>
     /// Represents a listener for Azure Storage Queues that processes messages and handles scaling.
     /// </summary>
-    public abstract class QueueListener<TQueueMessage> : IListener, ITaskSeriesCommand, INotificationCommand, ITargetScalerProvider, IScaleMonitorProvider
-        where TQueueMessage : IQueueMessage
+    public abstract class QueueListener : IListener, ITaskSeriesCommand, INotificationCommand, ITargetScalerProvider, IScaleMonitorProvider
     {
 
         #region Private Fields
@@ -35,7 +34,7 @@ namespace CloudNimble.WebJobs.Extensions.Common.Queues
         private readonly IDelayStrategy _delayStrategy;
         private readonly IQueueClient _queue;
         private readonly IQueueClient _poisonQueue;
-        private readonly ITriggerExecutor<TQueueMessage> _triggerExecutor;
+        private readonly ITriggerExecutor<IQueueMessage> _triggerExecutor;
         private readonly IWebJobsExceptionHandler _exceptionHandler;
         private readonly IMessageEnqueuedWatcher _sharedWatcher;
         private readonly List<Task> _processing = [];
@@ -43,13 +42,13 @@ namespace CloudNimble.WebJobs.Extensions.Common.Queues
         private readonly QueuesOptionsBase _queueOptions;
         private readonly QueueProcessor _queueProcessor;
         private readonly TimeSpan _visibilityTimeout;
-        private readonly ILogger<QueueListener<TQueueMessage>> _logger;
+        private readonly ILogger<QueueListener> _logger;
         private readonly FunctionDescriptor _functionDescriptor;
         private readonly string _functionId;
         private readonly CancellationTokenSource _shutdownCancellationTokenSource;
         private readonly CancellationTokenSource _executionCancellationTokenSource;
         private readonly Lazy<QueueTargetScaler> _targetScaler;
-        private readonly Lazy<QueueScaleMonitor<TQueueMessage>> _scaleMonitor;
+        private readonly Lazy<QueueScaleMonitor> _scaleMonitor;
         private readonly IDrainModeManager _drainModeManager;
 
         private bool? _queueExists;
@@ -74,12 +73,12 @@ namespace CloudNimble.WebJobs.Extensions.Common.Queues
         // for mock testing only
         internal QueueListener()
         {
-            _scaleMonitor = new Lazy<QueueScaleMonitor<TQueueMessage>>(() => new QueueScaleMonitor<TQueueMessage>());
+            _scaleMonitor = new Lazy<QueueScaleMonitor>(() => new QueueScaleMonitor());
             _targetScaler = new Lazy<QueueTargetScaler>(() => new QueueTargetScaler());
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="QueueListener{TQueueMessage}"/> class.
+        /// Initializes a new instance of the <see cref="QueueListener"/> class.
         /// </summary>
         /// <param name="queue">The queue client.</param>
         /// <param name="poisonQueue">The poison queue client.</param>
@@ -97,7 +96,7 @@ namespace CloudNimble.WebJobs.Extensions.Common.Queues
         /// <param name="drainModeManager">The drain mode manager.</param>
         public QueueListener(IQueueClient queue,
             IQueueClient poisonQueue,
-            ITriggerExecutor<TQueueMessage> triggerExecutor,
+            ITriggerExecutor<IQueueMessage> triggerExecutor,
             IWebJobsExceptionHandler exceptionHandler,
             ILoggerFactory loggerFactory,
             SharedQueueWatcher sharedWatcher,
@@ -133,7 +132,7 @@ namespace CloudNimble.WebJobs.Extensions.Common.Queues
             _triggerExecutor = triggerExecutor;
             _exceptionHandler = exceptionHandler;
             _queueOptions = queueOptions;
-            _logger = loggerFactory.CreateLogger<QueueListener<TQueueMessage>>();
+            _logger = loggerFactory.CreateLogger<QueueListener>();
             _functionDescriptor = functionDescriptor;
             _functionId = functionId ?? _functionDescriptor.Id;
             _details = $"queue name='{_queue.Name}', storage account name='{_queue.AccountName}'";
@@ -175,7 +174,7 @@ namespace CloudNimble.WebJobs.Extensions.Common.Queues
                         loggerFactory
                         ));
 
-            _scaleMonitor = new Lazy<QueueScaleMonitor<TQueueMessage>>(() => new QueueScaleMonitor<TQueueMessage>(_functionId, _queue, _exceptionClassifier, loggerFactory));
+            _scaleMonitor = new Lazy<QueueScaleMonitor>(() => new QueueScaleMonitor(_functionId, _queue, _exceptionClassifier, loggerFactory));
             _drainModeManager = drainModeManager;
         }
 
@@ -257,7 +256,7 @@ namespace CloudNimble.WebJobs.Extensions.Common.Queues
                 _stopWaitingTaskSource = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
             }
 
-            List<TQueueMessage> batch = null;
+            List<IQueueMessage> batch = null;
             string clientRequestId = Guid.NewGuid().ToString();
             Stopwatch sw = null;
             //using (HttpPipeline.CreateClientRequestIdScope(clientRequestId))
@@ -284,7 +283,7 @@ namespace CloudNimble.WebJobs.Extensions.Common.Queues
 
                         sw = Stopwatch.StartNew();
                         using CancellationTokenSource linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _shutdownCancellationTokenSource.Token);
-                        var response = await _queue.ReceiveMessagesAsync(numMessagesToReceive, _visibilityTimeout, linkedCts.Token).ConfigureAwait(false);
+                        var response = await _queue.ReceiveMessagesAsync<IQueueMessage>(numMessagesToReceive, _visibilityTimeout, linkedCts.Token).ConfigureAwait(false);
                         batch = response.Value;
 
                         int count = batch?.Count ?? -1;
@@ -471,7 +470,7 @@ namespace CloudNimble.WebJobs.Extensions.Common.Queues
             }
         }
 
-        internal async Task ProcessMessageAsync(TQueueMessage message, TimeSpan visibilityTimeout, CancellationToken cancellationToken)
+        internal async Task ProcessMessageAsync(IQueueMessage message, TimeSpan visibilityTimeout, CancellationToken cancellationToken)
         {
             try
             {

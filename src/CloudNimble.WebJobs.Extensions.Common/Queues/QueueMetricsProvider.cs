@@ -12,10 +12,9 @@ namespace CloudNimble.WebJobs.Extensions.Common.Queues
     /// <summary>
     /// Provides QueueTriggerMetrics from a specific queue entity.
     /// </summary>
-    public class QueueMetricsProvider<TQueueMessage> : IQueueMetricsProvider
-        where TQueueMessage : IQueueMessage
+    public class QueueMetricsProvider : IQueueMetricsProvider
     {
-        private readonly IQueueClient<TQueueMessage> _queue;
+        private readonly IQueueClient _queue;
         private readonly IQueueRequestExceptionClassifier _exceptionClassifier;
         private readonly ILogger _logger;
 
@@ -25,11 +24,11 @@ namespace CloudNimble.WebJobs.Extensions.Common.Queues
         /// <param name="queue">The QueueClient to use for metrics polling.</param>
         /// <param name="exceptionClassifier"></param>
         /// <param name="loggerFactory">Used to create an ILogger instance.</param>
-        public QueueMetricsProvider(IQueueClient<TQueueMessage> queue, IQueueRequestExceptionClassifier exceptionClassifier, ILoggerFactory loggerFactory)
+        public QueueMetricsProvider(IQueueClient queue, IQueueRequestExceptionClassifier exceptionClassifier, ILoggerFactory loggerFactory)
         {
             _queue = queue;
             _exceptionClassifier = exceptionClassifier;
-            _logger = loggerFactory.CreateLogger<QueueMetricsProvider<TQueueMessage>>();
+            _logger = loggerFactory.CreateLogger<QueueMetricsProvider>();
 
         }
 
@@ -68,7 +67,7 @@ namespace CloudNimble.WebJobs.Extensions.Common.Queues
 
                 if (queueLength > 0)
                 {
-                    var message = (await _queue.PeekMessagesAsync(1).ConfigureAwait(false)).Value.FirstOrDefault();
+                    var message = (await _queue.PeekMessagesAsync<IQueueMessage>(1).ConfigureAwait(false)).Value.FirstOrDefault();
                     if (message != null)
                     {
                         if (message.DateInserted.HasValue)

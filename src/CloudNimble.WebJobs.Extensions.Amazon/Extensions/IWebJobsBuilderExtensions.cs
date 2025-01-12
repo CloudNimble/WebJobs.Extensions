@@ -8,6 +8,7 @@ using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System;
 using System.ComponentModel;
@@ -78,14 +79,19 @@ namespace Microsoft.Azure.WebJobs
         /// <param name="triggerMetadata">Trigger metadata.</param>
         /// <returns></returns>
         [EditorBrowsable(EditorBrowsableState.Never)]
-        public static IWebJobsBuilder AddAzureStorageQueuesScaleForTrigger(this IWebJobsBuilder builder, TriggerMetadata triggerMetadata)
+        public static IWebJobsBuilder AddAmazonSQSScaleForTrigger(this IWebJobsBuilder builder, TriggerMetadata triggerMetadata)
         {
             // We need to register an instance of QueueScalerProvider in the DI container and then map it to the interfaces IScaleMonitorProvider and ITargetScalerProvider.
             // Since there can be more than one instance of QueueScalerProvider, we have to store a reference to the created instance to filter it out later.
             SQSScalerProvider queueScalerProvider = null;
             builder.Services.AddSingleton(sp =>
             {
-                queueScalerProvider = new SQSScalerProvider(triggerMetadata, sp.GetRequiredService<IQueueRequestExceptionClassifier>(), sp.GetRequiredService<IOptionsMonitor<QueuesOptionsBase>>());
+                queueScalerProvider = new SQSScalerProvider(
+                    triggerMetadata,
+                    sp.GetRequiredService<IQueueRequestExceptionClassifier>(),
+                    sp.GetRequiredService<IQueueClient>(),
+                    sp.GetRequiredService<IOptionsMonitor<QueuesOptionsBase>>(),
+                    sp.GetRequiredService<ILoggerFactory>());
                 return queueScalerProvider;
             });
             builder.Services.AddSingleton<IScaleMonitorProvider>(sp => sp.GetServices<SQSScalerProvider>().Single(x => x == queueScalerProvider));

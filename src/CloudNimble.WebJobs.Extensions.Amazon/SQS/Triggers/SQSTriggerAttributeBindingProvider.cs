@@ -17,52 +17,74 @@ using System.Threading.Tasks;
 
 namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Triggers
 {
+
+
+    /// <summary>
+    /// Provides binding for SQS trigger attributes.
+    /// </summary>
     internal class SQSTriggerAttributeBindingProvider : ITriggerBindingProvider
     {
-
         private readonly IQueueTriggerArgumentBindingProvider _innerProvider;
         private readonly INameResolver _nameResolver;
-        //private readonly QueueServiceClientProvider _queueServiceClientProvider;
         private readonly QueuesOptionsBase _queueOptions;
         private readonly IWebJobsExceptionHandler _exceptionHandler;
         private readonly SharedQueueWatcher _messageEnqueuedWatcherSetter;
         private readonly ILoggerFactory _loggerFactory;
         private readonly IQueueProcessorFactory _queueProcessorFactory;
         private readonly QueueMessageCausalityManager _queueCausalityManager;
+        private readonly IQueueRequestExceptionClassifier _exceptionClassifier;
         private readonly ConcurrencyManager _concurrencyManager;
         private readonly IDrainModeManager _drainModeManager;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="SQSTriggerAttributeBindingProvider"/> class.
+        /// </summary>
+        /// <param name="nameResolver">The name resolver.</param>
+        /// <param name="queueOptions">The queue options.</param>
+        /// <param name="exceptionHandler">The exception handler.</param>
+        /// <param name="messageEnqueuedWatcherSetter">The message enqueued watcher setter.</param>
+        /// <param name="loggerFactory">The logger factory.</param>
+        /// <param name="queueProcessorFactory">The queue processor factory.</param>
+        /// <param name="queueCausalityManager">The queue causality manager.</param>
+        /// <param name="exceptionClassifier">The exception classifier.</param>
+        /// <param name="concurrencyManager">The concurrency manager.</param>
+        /// <param name="drainModeManager">The drain mode manager.</param>
         public SQSTriggerAttributeBindingProvider(
             INameResolver nameResolver,
-            //QueueServiceClientProvider queueServiceClientProvider,
             IOptions<QueuesOptionsBase> queueOptions,
             IWebJobsExceptionHandler exceptionHandler,
             SharedQueueWatcher messageEnqueuedWatcherSetter,
             ILoggerFactory loggerFactory,
             IQueueProcessorFactory queueProcessorFactory,
             QueueMessageCausalityManager queueCausalityManager,
+            IQueueRequestExceptionClassifier exceptionClassifier,
             ConcurrencyManager concurrencyManager,
             IDrainModeManager drainModeManager)
         {
-            //_queueServiceClientProvider = queueServiceClientProvider ?? throw new ArgumentNullException(nameof(queueServiceClientProvider));
+            _nameResolver = nameResolver;
             _queueOptions = (queueOptions ?? throw new ArgumentNullException(nameof(queueOptions))).Value;
             _exceptionHandler = exceptionHandler ?? throw new ArgumentNullException(nameof(exceptionHandler));
             _messageEnqueuedWatcherSetter = messageEnqueuedWatcherSetter ?? throw new ArgumentNullException(nameof(messageEnqueuedWatcherSetter));
-            _queueCausalityManager = queueCausalityManager ?? throw new ArgumentNullException(nameof(queueCausalityManager));
-            _concurrencyManager = concurrencyManager ?? throw new ArgumentNullException(nameof(concurrencyManager));
-
-            _nameResolver = nameResolver;
             _loggerFactory = loggerFactory;
             _queueProcessorFactory = queueProcessorFactory;
+            _queueCausalityManager = queueCausalityManager ?? throw new ArgumentNullException(nameof(queueCausalityManager));
+            _exceptionClassifier = exceptionClassifier ?? throw new ArgumentNullException(nameof(exceptionClassifier));
+            _concurrencyManager = concurrencyManager ?? throw new ArgumentNullException(nameof(concurrencyManager));
+            _drainModeManager = drainModeManager ?? throw new ArgumentNullException(nameof(drainModeManager));
 
             _innerProvider =
             new CompositeQueueTriggerArgumentBindingProvider(
-                new ConverterArgumentBindingProvider<SQSMessage>(new SQSMessageDirectConverter(), loggerFactory), // $$$: Is this the best way to handle a direct CloudQueueMessage? TODO (kasobol-msft) is this needed?
+                new ConverterArgumentBindingProvider<SQSMessage>(new SQSMessageDirectConverter(), loggerFactory),
                 new ConverterArgumentBindingProvider<string>(new SQSMessageToStringConverter(), loggerFactory),
                 new ConverterArgumentBindingProvider<ParameterBindingData>(new SQSMessageToParameterBindingDataConverter(), loggerFactory),
-                new UserTypeArgumentBindingProvider(loggerFactory)); // Must come last, because it will attempt to bind all types.
+                new UserTypeArgumentBindingProvider(loggerFactory));
         }
 
+        /// <summary>
+        /// Tries to create a trigger binding.
+        /// </summary>
+        /// <param name="context">The trigger binding provider context.</param>
+        /// <returns>A task that returns the trigger binding if successful; otherwise, null.</returns>
         public Task<ITriggerBinding> TryCreateAsync(TriggerBindingProviderContext context)
         {
             var parameter = context.Parameter;
@@ -76,34 +98,44 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Triggers
             var queueName = Resolve(queueTrigger.QueueName);
             queueName = NormalizeAndValidate(queueName);
 
-            var argumentBinding = _innerProvider.TryCreate(parameter) 
+            var argumentBinding = _innerProvider.TryCreate(parameter)
                 ?? throw new InvalidOperationException($"Can't bind QueueTrigger to type '{parameter.ParameterType}'.");
 
-            var client = _queueServiceClientProvider.Get(queueTrigger.Connection, _nameResolver);
-            var queue = client.GetQueueClient(queueName);
+            var queue = new SQSQueue(queueName, null, _loggerFactory);
 
             var binding = new SQSTriggerBinding(
                 parameter.Name,
                 queue,
-                (ITriggerDataArgumentBinding<SQSMessage>)argumentBinding, // Cast to the correct type
+                (ITriggerDataArgumentBinding<SQSMessage>)argumentBinding,
                 _queueOptions,
                 _exceptionHandler,
                 _messageEnqueuedWatcherSetter,
                 _loggerFactory,
                 _queueProcessorFactory,
                 _queueCausalityManager,
+                _exceptionClassifier,
                 _concurrencyManager,
                 _drainModeManager);
             return Task.FromResult<ITriggerBinding>(binding);
         }
 
+        /// <summary>
+        /// Normalizes and validates the queue name.
+        /// </summary>
+        /// <param name="queueName">The queue name.</param>
+        /// <returns>The normalized and validated queue name.</returns>
         private static string NormalizeAndValidate(string queueName)
         {
-            queueName = queueName.ToLowerInvariant(); // must be lowercase. coerce here to be nice.
+            queueName = queueName.ToLowerInvariant();
             SQSQueue.ValidateQueueName(queueName);
             return queueName;
         }
 
+        /// <summary>
+        /// Resolves the queue name using the name resolver.
+        /// </summary>
+        /// <param name="queueName">The queue name.</param>
+        /// <returns>The resolved queue name.</returns>
         private string Resolve(string queueName)
         {
             if (_nameResolver is null)

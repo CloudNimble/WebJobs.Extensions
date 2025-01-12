@@ -1,7 +1,6 @@
 ﻿// Copyright (c) CloudNimble, Inc. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using Amazon.SQS;
 using CloudNimble.WebJobs.Extensions.Amazon.SQS.Triggers;
 using CloudNimble.WebJobs.Extensions.Common;
 using CloudNimble.WebJobs.Extensions.Common.Queues;
@@ -13,7 +12,6 @@ using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Extensions.Logging;
 using System;
-using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -25,7 +23,7 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Listeners
 
         #region Private Members
 
-        private static string poisonQueueSuffix = "-poison";
+        //private static string poisonQueueSuffix = "-poison";
         private readonly SQSQueue _queue;
         private readonly SQSQueue _poisonQueue;
         private readonly QueuesOptionsBase _queueOptions;
@@ -78,15 +76,15 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Listeners
             _queueOptions = queueOptions ?? throw new ArgumentNullException(nameof(queueOptions));
             _exceptionHandler = exceptionHandler ?? throw new ArgumentNullException(nameof(exceptionHandler));
             _messageEnqueuedWatcherSetter = messageEnqueuedWatcherSetter ?? throw new ArgumentNullException(nameof(messageEnqueuedWatcherSetter));
+            _loggerFactory = loggerFactory;
             _executor = executor ?? throw new ArgumentNullException(nameof(executor));
+            _queueProcessorFactory = queueProcessorFactory;
+            _queueCausalityManager = queueCausalityManager ?? throw new ArgumentNullException(nameof(queueCausalityManager));
             _descriptor = descriptor ?? throw new ArgumentNullException(nameof(descriptor));
             _concurrencyManager = concurrencyManager ?? throw new ArgumentNullException(nameof(concurrencyManager));
-            _queueCausalityManager = queueCausalityManager ?? throw new ArgumentNullException(nameof(queueCausalityManager));
+            _drainModeManager = drainModeManager;
             _exceptionClassifier = exceptionClassifier ?? throw new ArgumentNullException(nameof(exceptionClassifier));
-
             _poisonQueue = queue; //CreatePoisonQueueReference(queue.ServiceClient, queue.Name);
-            _loggerFactory = loggerFactory;
-            _queueProcessorFactory = queueProcessorFactory;
         }
 
         #endregion
@@ -115,8 +113,7 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Listeners
                 _descriptor, 
                 _exceptionClassifier,
                 _concurrencyManager,
-                drainModeManager: _drainModeManager
-                );
+                _drainModeManager);
 
             return await Task.FromResult(listener);
         }
@@ -138,7 +135,7 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Listeners
                 queueProcessor = queueProcessorFactory.Create(context);
             }
 
-            QueueListener<SQSMessage>.RegisterSharedWatcherWithQueueProcessor(queueProcessor, sharedWatcher);
+            QueueListener.RegisterSharedWatcherWithQueueProcessor(queueProcessor, sharedWatcher);
 
             return queueProcessor;
         }

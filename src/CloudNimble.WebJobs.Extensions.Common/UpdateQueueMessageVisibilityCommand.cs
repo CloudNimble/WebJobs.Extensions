@@ -14,10 +14,9 @@ namespace CloudNimble.WebJobs.Extensions.Common
     /// <summary>
     /// Represents a command to update the visibility timeout of a queue message.
     /// </summary>
-    public class UpdateQueueMessageVisibilityCommand<TQueueMessage> : ITaskSeriesCommand
-        where TQueueMessage : IQueueMessage
+    public class UpdateQueueMessageVisibilityCommand : ITaskSeriesCommand
     {
-        private readonly IQueueClient<TQueueMessage> _queue;
+        private readonly IQueueClient _queue;
         private volatile IQueueMessage _message;
         private readonly TimeSpan _visibilityTimeout;
         private readonly IQueueRequestExceptionClassifier _classifier;
@@ -25,7 +24,7 @@ namespace CloudNimble.WebJobs.Extensions.Common
         private readonly Action<IQueueMessage, QueueMessageUpdateReceipt> _onUpdateReceipt;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="UpdateQueueMessageVisibilityCommand{TQueueMessage}"/> class.
+        /// Initializes a new instance of the <see cref="UpdateQueueMessageVisibilityCommand"/> class.
         /// </summary>
         /// <param name="queue">The queue client to interact with the queue.</param>
         /// <param name="message">The queue message whose visibility timeout is to be updated.</param>
@@ -33,7 +32,7 @@ namespace CloudNimble.WebJobs.Extensions.Common
         /// <param name="classifier"></param>
         /// <param name="speedupStrategy">The strategy to determine the delay before the next execution attempt.</param>
         /// <param name="onUpdateReceipt">The action to perform when the message update receipt is received.</param>
-        public UpdateQueueMessageVisibilityCommand(IQueueClient<TQueueMessage> queue, IQueueMessage message,
+        public UpdateQueueMessageVisibilityCommand(IQueueClient queue, IQueueMessage message,
             TimeSpan visibilityTimeout, IQueueRequestExceptionClassifier classifier, IDelayStrategy speedupStrategy, 
             Action<IQueueMessage, QueueMessageUpdateReceipt> onUpdateReceipt)
         {

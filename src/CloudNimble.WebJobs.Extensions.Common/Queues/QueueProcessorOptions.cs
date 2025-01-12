@@ -10,8 +10,7 @@ namespace CloudNimble.WebJobs.Extensions.Common.Queues
     /// <summary>
     /// Provides options input for creating <see cref="QueueProcessor"/> instances.
     /// </summary>
-    public class QueueProcessorOptions<TQueueMessage>
-        where TQueueMessage : IQueueMessage
+    public class QueueProcessorOptions     
     {
 
         /// <summary>
@@ -21,7 +20,7 @@ namespace CloudNimble.WebJobs.Extensions.Common.Queues
         /// <param name="loggerFactory">The <see cref="ILoggerFactory"/> to create an <see cref="ILogger"/> from.</param>
         /// <param name="options">The queue configuration.</param>
         /// <param name="poisonQueue">The queue to move messages to when unable to process a message after the maximum dequeue count has been exceeded. May be null.</param>
-        internal QueueProcessorOptions(IQueueClient<TQueueMessage> queue, ILoggerFactory loggerFactory, QueuesOptionsBase options, IQueueClient<TQueueMessage> poisonQueue = null)
+        internal QueueProcessorOptions(IQueueClient queue, ILoggerFactory loggerFactory, QueuesOptionsBase options, IQueueClient poisonQueue = null)
         {
             Queue = queue ?? throw new ArgumentNullException(nameof(queue));
             PoisonQueue = poisonQueue;
@@ -32,12 +31,12 @@ namespace CloudNimble.WebJobs.Extensions.Common.Queues
         /// <summary>
         /// Gets the queue the <see cref="QueueProcessor"/> will operate on.
         /// </summary>
-        public IQueueClient<TQueueMessage> Queue { get; private set; }
+        public IQueueClient Queue { get; private set; }
 
         /// <summary>
         /// Gets the queue to move messages to when unable to process a message after the maximum dequeue count has been exceeded. May be null.
         /// </summary>
-        public IQueueClient<TQueueMessage> PoisonQueue { get; private set; }
+        public IQueueClient PoisonQueue { get; private set; }
 
         /// <summary>
         /// Gets the <see cref="ILogger"/>.

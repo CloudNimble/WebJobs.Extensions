@@ -20,7 +20,7 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Listeners
     /// <summary>
     /// 
     /// </summary>
-    internal sealed partial class SQSListener : QueueListener<SQSMessage>, IListener
+    internal sealed partial class SQSListener : QueueListener, IListener
     {
 
         /// <summary>
@@ -51,7 +51,7 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Listeners
             IDrainModeManager drainModeManager) : base(
                 queue,
                 poisonQueue,
-                triggerExecutor,
+                (Common.Listeners.ITriggerExecutor<IQueueMessage>)triggerExecutor,
                 exceptionHandler,
                 loggerFactory,
                 messageEnqueuedWatcherSetter,

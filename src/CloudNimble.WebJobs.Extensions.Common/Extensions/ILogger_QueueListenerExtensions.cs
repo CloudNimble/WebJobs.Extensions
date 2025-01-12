@@ -24,8 +24,8 @@ namespace CloudNimble.WebJobs.Extensions.Common.Queues
         /// <param name="clientRequestId">The client request ID.</param>
         /// <param name="messageCount">The number of messages retrieved.</param>
         /// <param name="pollLatency">The latency of the poll in milliseconds.</param>
-        public static void GetMessages<TQueueMessage>(this ILogger<QueueListener<TQueueMessage>> logger, string functionName, string queueName, string clientRequestId, int messageCount, long pollLatency)
-            where TQueueMessage : IQueueMessage
+        public static void GetMessages(this ILogger<QueueListener> logger, string functionName, string queueName, string clientRequestId, int messageCount, long pollLatency)
+            //where TQueueMessage : IQueueMessage
             => _getMessages(logger, functionName, queueName, clientRequestId, messageCount, pollLatency, null);
 
         /// <summary>
@@ -35,8 +35,8 @@ namespace CloudNimble.WebJobs.Extensions.Common.Queues
         /// <param name="functionName">The name of the function.</param>
         /// <param name="queueName">The name of the queue.</param>
         /// <param name="pollDelay">The delay before the next poll in milliseconds.</param>
-        public static void BackoffDelay<TQueueMessage>(this ILogger<QueueListener<TQueueMessage>> logger, string functionName, string queueName, double pollDelay)
-            where TQueueMessage : IQueueMessage
+        public static void BackoffDelay(this ILogger<QueueListener> logger, string functionName, string queueName, double pollDelay)
+            //where TQueueMessage : IQueueMessage
             => _backoffDelay(logger, functionName, pollDelay, queueName, null);
 
         /// <summary>
@@ -48,8 +48,8 @@ namespace CloudNimble.WebJobs.Extensions.Common.Queues
         /// <param name="clientRequestId">The client request ID.</param>
         /// <param name="pollLatency">The latency of the poll in milliseconds.</param>
         /// <param name="exception">The exception that was thrown.</param>
-        public static void HandlingStorageException<TQueueMessage>(this ILogger<QueueListener<TQueueMessage>> logger, string functionName, string queueName, string clientRequestId, long pollLatency, Exception exception)
-            where TQueueMessage : IQueueMessage
+        public static void HandlingStorageException(this ILogger<QueueListener> logger, string functionName, string queueName, string clientRequestId, long pollLatency, Exception exception)
+           // where TQueueMessage : IQueueMessage
             => _handlingStorageException(logger, functionName, queueName, clientRequestId, exception.GetType().Name, pollLatency, exception.Message, null);
 
         #endregion

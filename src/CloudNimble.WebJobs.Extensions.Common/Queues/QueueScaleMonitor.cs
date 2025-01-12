@@ -15,8 +15,7 @@ namespace CloudNimble.WebJobs.Extensions.Common.Queues
     /// <summary>
     /// Used to retrieve metrics and make scale decisions for Queues.
     /// </summary>
-    internal class QueueScaleMonitor<TQueueMessage> : IScaleMonitor<QueueTriggerMetrics>
-        where TQueueMessage : IQueueMessage
+    internal class QueueScaleMonitor : IScaleMonitor<QueueTriggerMetrics>
     {
         private const int NumberOfSamplesToConsider = 5;
 
@@ -40,7 +39,7 @@ namespace CloudNimble.WebJobs.Extensions.Common.Queues
         public QueueScaleMonitor(string functionId, IQueueClient queue, IQueueRequestExceptionClassifier exceptionClassifier, ILoggerFactory loggerFactory)
         {
             _queue = queue;
-            _logger = loggerFactory.CreateLogger<QueueListener<TQueueMessage>>();
+            _logger = loggerFactory.CreateLogger<QueueListener>();
             _scaleMonitorDescriptor = new ScaleMonitorDescriptor($"{functionId}-QueueTrigger-{_queue.Name}".ToLower(CultureInfo.InvariantCulture), functionId);
             _queueMetricsProvider = new QueueMetricsProvider(queue, exceptionClassifier, loggerFactory);
         }

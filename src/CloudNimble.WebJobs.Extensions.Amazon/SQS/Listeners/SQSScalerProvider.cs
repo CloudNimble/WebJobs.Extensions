@@ -28,12 +28,21 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Listeners
         /// </summary>
         /// <param name="triggerMetadata">The trigger metadata.</param>
         /// <param name="exceptionClassifier">The exception classifier.</param>
+        /// <param name="queueClient"></param>
         /// <param name="queuesOptions">The queue options.</param>
-        public SQSScalerProvider(TriggerMetadata triggerMetadata, IQueueRequestExceptionClassifier exceptionClassifier, IOptionsMonitor<QueuesOptionsBase> queuesOptions)
+        /// <param name="loggerFactory"></param>
+        public SQSScalerProvider(
+            TriggerMetadata triggerMetadata, 
+            IQueueRequestExceptionClassifier exceptionClassifier,
+            IQueueClient queueClient,
+            IOptionsMonitor<QueuesOptionsBase> queuesOptions,
+            ILoggerFactory loggerFactory)
         {
             _triggerMetadata = triggerMetadata;
             _exceptionClassifier = exceptionClassifier;
+            _queueClient = queueClient;
             _queuesOptions = queuesOptions;
+            _loggerFactory = loggerFactory;
         }
 
         /// <summary>
@@ -42,7 +51,7 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Listeners
         /// <returns>The scale monitor.</returns>
         public IScaleMonitor GetMonitor()
         {
-            return new QueueScaleMonitor<SQSMessage>(
+            return new QueueScaleMonitor(
                 _triggerMetadata.FunctionName,
                 _queueClient,
                 _exceptionClassifier,

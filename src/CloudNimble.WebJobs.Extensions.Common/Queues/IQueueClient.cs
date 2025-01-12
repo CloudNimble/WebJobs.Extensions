@@ -8,8 +8,8 @@ namespace CloudNimble.WebJobs.Extensions.Common.Queues
     /// <summary>
     /// Defines a client for interacting with a queue.
     /// </summary>
-    public interface IQueueClient<TQueueMessage>
-        where TQueueMessage : IQueueMessage
+    public interface IQueueClient//<TQueueMessage>
+        //where TQueueMessage : IQueueMessage
     {
 
         /// <summary>
@@ -81,7 +81,8 @@ namespace CloudNimble.WebJobs.Extensions.Common.Queues
         /// </summary>
         /// <param name="v"></param>
         /// <returns></returns>
-        Task<QueueResponse<TQueueMessage>> PeekMessagesAsync(int v);
+        Task<QueueResponse<TQueueMessage>> PeekMessagesAsync<TQueueMessage>(int v)
+            where TQueueMessage : IQueueMessage;
 
         /// <summary>
         /// 
@@ -90,7 +91,8 @@ namespace CloudNimble.WebJobs.Extensions.Common.Queues
         /// <param name="visibilityTimeout"></param>
         /// <param name="token"></param>
         /// <returns></returns>
-        Task<QueueResponse<TQueueMessage>> ReceiveMessagesAsync(int numMessagesToReceive, TimeSpan visibilityTimeout, CancellationToken token);
+        Task<QueueResponse<TQueueMessage>> ReceiveMessagesAsync<TQueueMessage>(int numMessagesToReceive, TimeSpan visibilityTimeout, CancellationToken token)
+            where TQueueMessage : IQueueMessage;
 
         /// <summary>
         /// 

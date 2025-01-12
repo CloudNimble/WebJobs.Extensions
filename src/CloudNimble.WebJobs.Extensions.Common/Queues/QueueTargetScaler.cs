@@ -9,14 +9,14 @@ using System.Threading.Tasks;
 namespace CloudNimble.WebJobs.Extensions.Common.Queues
 {
     /// <summary>
-    /// Provides queue length metrics for the <see cref="QueueTargetScaler{TQueueMessage}"/>.
+    /// Provides queue length metrics for the <see cref="QueueTargetScaler"/>.
     /// </summary>
-    public class QueueTargetScaler<TQueueMessage> : ITargetScaler
-        where TQueueMessage : IQueueMessage
+    public class QueueTargetScaler : ITargetScaler
+        //where TQueueMessage : IQueueMessage
     {
         private readonly string _functionId;
         private readonly string _queueName;
-        private readonly QueueMetricsProvider<TQueueMessage> _queueMetricsProvider;
+        private readonly QueueMetricsProvider _queueMetricsProvider;
         private readonly TargetScalerDescriptor _targetScalerDescriptor;
         private readonly QueuesOptionsBase _options;
         private readonly ILogger _logger;
@@ -32,22 +32,22 @@ namespace CloudNimble.WebJobs.Extensions.Common.Queues
         public TargetScalerDescriptor TargetScalerDescriptor => _targetScalerDescriptor;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="QueueTargetScaler{TQueueMessage}"/> class.
+        /// Initializes a new instance of the <see cref="QueueTargetScaler"/> class.
         /// </summary>
         /// <param name="functionId">The function identifier.</param>
         /// <param name="queueClient">The queue client.</param>
         /// <param name="options">The queue options.</param>
         /// <param name="exceptionClassifier"></param>
         /// <param name="loggerFactory">The logger factory.</param>
-        public QueueTargetScaler(string functionId, IQueueClient<TQueueMessage> queueClient, QueuesOptionsBase options, IQueueRequestExceptionClassifier exceptionClassifier,
+        public QueueTargetScaler(string functionId, IQueueClient queueClient, QueuesOptionsBase options, IQueueRequestExceptionClassifier exceptionClassifier,
             ILoggerFactory loggerFactory)
         {
             _functionId = functionId;
             _queueName = queueClient.Name;
-            _queueMetricsProvider = new QueueMetricsProvider<TQueueMessage>(queueClient, exceptionClassifier, loggerFactory);
+            _queueMetricsProvider = new QueueMetricsProvider(queueClient, exceptionClassifier, loggerFactory);
             _targetScalerDescriptor = new TargetScalerDescriptor(functionId);
             _options = options;
-            _logger = loggerFactory.CreateLogger<QueueTargetScaler<TQueueMessage>>();
+            _logger = loggerFactory.CreateLogger<QueueTargetScaler>();
         }
 
         /// <summary>
