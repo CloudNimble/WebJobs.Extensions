@@ -15,6 +15,7 @@ using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -23,7 +24,8 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Triggers
 {
 
     /// <summary>
-    /// 
+    /// Provides trigger binding capabilities for Amazon SQS queues in the WebJobs framework.
+    /// Handles the binding of SQS messages to function parameters and the creation of listeners for message processing.
     /// </summary>
     internal class SQSTriggerBinding : ITriggerBinding
     {
@@ -45,11 +47,29 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Triggers
         private readonly IQueueRequestExceptionClassifier _exceptionClassifier;
         private readonly ConcurrencyManager _concurrencyManager;
         private readonly IDrainModeManager _drainModeManager;
+        private readonly IOptions<SQSOptions> _sqsOptions;
 
         #endregion
 
         #region Constructors
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="SQSTriggerBinding"/> class.
+        /// </summary>
+        /// <param name="parameterName">The name of the parameter being bound.</param>
+        /// <param name="queue">The SQS queue to bind to.</param>
+        /// <param name="argumentBinding">The argument binding for converting SQS messages to the target parameter type.</param>
+        /// <param name="queueOptions">The queue processing options and configuration.</param>
+        /// <param name="exceptionHandler">The handler for managing unhandled exceptions.</param>
+        /// <param name="messageEnqueuedWatcherSetter">The watcher for message enqueue notifications.</param>
+        /// <param name="loggerFactory">The factory for creating loggers.</param>
+        /// <param name="queueProcessorFactory">The factory for creating queue processors.</param>
+        /// <param name="queueCausalityManager">The manager for tracking message causality.</param>
+        /// <param name="exceptionClassifier">The classifier for determining exception types and handling strategies.</param>
+        /// <param name="concurrencyManager">The manager for controlling function execution concurrency.</param>
+        /// <param name="drainModeManager">The manager for handling graceful shutdown and drain mode operations.</param>
+        /// <param name="sqsOptions">The SQS-specific configuration options.</param>
+        /// <exception cref="ArgumentNullException">Thrown when any required parameter is null.</exception>
         public SQSTriggerBinding(
             string parameterName,
             SQSQueue queue,
@@ -62,7 +82,8 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Triggers
             QueueMessageCausalityManager queueCausalityManager,
             IQueueRequestExceptionClassifier exceptionClassifier,
             ConcurrencyManager concurrencyManager,
-            IDrainModeManager drainModeManager)
+            IDrainModeManager drainModeManager,
+            IOptions<SQSOptions> sqsOptions)
         {
             _queue = queue ?? throw new ArgumentNullException(nameof(queue));
             _argumentBinding = argumentBinding ?? throw new ArgumentNullException(nameof(argumentBinding));
@@ -73,6 +94,7 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Triggers
             _queueCausalityManager = queueCausalityManager ?? throw new ArgumentNullException(nameof(queueCausalityManager));
             _exceptionClassifier = exceptionClassifier ?? throw new ArgumentNullException(nameof(exceptionClassifier));
             _concurrencyManager = concurrencyManager ?? throw new ArgumentNullException(nameof(concurrencyManager));
+            _sqsOptions = sqsOptions ?? throw new ArgumentNullException(nameof(sqsOptions));
 
             _parameterName = parameterName;
             _loggerFactory = loggerFactory;
@@ -85,25 +107,25 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Triggers
         #endregion
 
         /// <summary>
-        /// 
+        /// Gets the type of the trigger value.
         /// </summary>
         public Type TriggerValueType => typeof(Message);
 
         /// <summary>
-        /// 
+        /// Gets the binding data contract that defines the available binding data for this trigger.
         /// </summary>
         public IReadOnlyDictionary<string, Type> BindingDataContract => _bindingDataContract;
 
         /// <summary>
-        /// 
+        /// Gets the name of the queue being monitored by this trigger.
         /// </summary>
         public string QueueName => _queue.Name;
 
         /// <summary>
-        /// 
+        /// Creates the binding data contract for the SQS trigger.
         /// </summary>
-        /// <param name="argumentBindingContract"></param>
-        /// <returns></returns>
+        /// <param name="argumentBindingContract">The argument binding contract from the parameter binding.</param>
+        /// <returns>A dictionary containing the binding data contract with SQS-specific properties.</returns>
         private static Dictionary<string, Type> CreateBindingDataContract(Dictionary<string, Type> argumentBindingContract)
         {
             var contract = new Dictionary<string, Type>(StringComparer.OrdinalIgnoreCase)
@@ -129,6 +151,11 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Triggers
             return contract;
         }
 
+        /// <summary>
+        /// Creates a converter for transforming objects to SQS messages.
+        /// </summary>
+        /// <param name="queue">The SQS queue for context.</param>
+        /// <returns>An object-to-type converter for SQS messages.</returns>
         private static IObjectToTypeConverter<SQSMessage> CreateConverter(SQSQueue queue)
         {
             return new CompositeObjectToTypeConverter<SQSMessage>(
@@ -137,6 +164,13 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Triggers
             );
         }
 
+        /// <summary>
+        /// Binds the specified value to trigger data for function execution.
+        /// </summary>
+        /// <param name="value">The value to bind (typically an SQS message).</param>
+        /// <param name="context">The value binding context.</param>
+        /// <returns>A task that returns trigger data containing the bound value and binding data.</returns>
+        /// <exception cref="InvalidOperationException">Thrown when the value cannot be converted to an SQS message.</exception>
         public async Task<ITriggerData> BindAsync(object value, ValueBindingContext context)
         {
             if (!_converter.TryConvert(value, out SQSMessage message))
@@ -150,6 +184,12 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Triggers
             return new TriggerData(triggerData.ValueProvider, bindingData);
         }
 
+        /// <summary>
+        /// Creates a listener for processing SQS messages.
+        /// </summary>
+        /// <param name="context">The listener factory context containing execution information.</param>
+        /// <returns>A task that returns a configured SQS listener.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when context is null.</exception>
         public Task<IListener> CreateListenerAsync(ListenerFactoryContext context)
         {
             Ensure.ArgumentNotNull(context, nameof(context));
@@ -166,11 +206,16 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Triggers
                 context.Descriptor,
                 _concurrencyManager,
                 _drainModeManager,
-                _exceptionClassifier);
+                _exceptionClassifier,
+                _sqsOptions);
 
             return factory.CreateAsync(context.CancellationToken);
         }
 
+        /// <summary>
+        /// Creates a parameter descriptor for this trigger binding.
+        /// </summary>
+        /// <returns>A parameter descriptor containing metadata about the SQS trigger.</returns>
         public ParameterDescriptor ToParameterDescriptor()
         {
             return new SQSTriggerParameterDescriptor
@@ -181,6 +226,12 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Triggers
             };
         }
 
+        /// <summary>
+        /// Creates binding data from an SQS message and additional binding data.
+        /// </summary>
+        /// <param name="sqsMessage">The SQS message to extract binding data from.</param>
+        /// <param name="bindingDataFromValueType">Additional binding data from the value type.</param>
+        /// <returns>A dictionary containing all binding data for the function execution.</returns>
         private static Dictionary<string, object> CreateBindingData(SQSMessage sqsMessage,
             IReadOnlyDictionary<string, object> bindingDataFromValueType)
         {

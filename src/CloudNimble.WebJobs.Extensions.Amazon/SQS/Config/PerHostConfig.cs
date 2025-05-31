@@ -8,6 +8,8 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Config;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using System;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -27,12 +29,13 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Config
 
         // Fields that the various binding funcs need to close over. 
         private AmazonSQSClient _amazonSQSClient;
+        private ILoggerFactory _loggerFactory;
+        private IOptions<SQSOptions> _sqsOptions;
 
         // Optimization where a queue output can directly trigger a queue input. 
         // This is per-host (not per-config)
         private IContextGetter<IMessageEnqueuedWatcher> _messageEnqueuedWatcherGetter;
         private QueueMessageCausalityManager _causalityManager;
-
 
         #endregion
 
@@ -40,11 +43,15 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Config
             ExtensionConfigContext context,
             AmazonSQSClient amazonSQSClient,
             IContextGetter<IMessageEnqueuedWatcher> contextGetter,
-            QueueMessageCausalityManager causalityManager)
+            QueueMessageCausalityManager causalityManager,
+            ILoggerFactory loggerFactory,
+            IOptions<SQSOptions> sqsOptions)
         {
             _amazonSQSClient = amazonSQSClient;
             _messageEnqueuedWatcherGetter = contextGetter;
             _causalityManager = causalityManager;
+            _loggerFactory = loggerFactory;
+            _sqsOptions = sqsOptions;
 
             // IStorageQueueMessage is the core testing interface 
             var binding = context.AddBindingRule<SQSAttribute>();
@@ -145,7 +152,7 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Config
 
             //return client.GetQueueReference(queueName);
 
-            return new SQSQueue(queueName, _amazonSQSClient, null);
+            return new SQSQueue(queueName, _amazonSQSClient, _loggerFactory, _sqsOptions);
         }
     }
 }

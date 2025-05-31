@@ -38,6 +38,7 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Triggers
         private readonly QueuesOptionsBase _queueOptions;
         private readonly IQueueProcessorFactory _queueProcessorFactory;
         private readonly IAmazonSQS _sqsClient;
+        private readonly IOptions<SQSOptions> _sqsOptions;
 
         #endregion
 
@@ -57,6 +58,7 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Triggers
         /// <param name="concurrencyManager">The manager for controlling function concurrency.</param>
         /// <param name="drainModeManager">The manager for handling drain mode operations.</param>
         /// <param name="sqsClient">The Amazon SQS client for queue operations.</param>
+        /// <param name="sqsOptions">The SQS-specific configuration options.</param>
         /// <exception cref="ArgumentNullException">Thrown when any required parameter is null.</exception>
         public SQSTriggerAttributeBindingProvider(
             INameResolver nameResolver,
@@ -69,7 +71,8 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Triggers
             IQueueRequestExceptionClassifier exceptionClassifier,
             ConcurrencyManager concurrencyManager,
             IDrainModeManager drainModeManager,
-            IAmazonSQS sqsClient)
+            IAmazonSQS sqsClient,
+            IOptions<SQSOptions> sqsOptions)
         {
             ArgumentNullException.ThrowIfNull(queueOptions);
             ArgumentNullException.ThrowIfNull(exceptionHandler);
@@ -79,6 +82,7 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Triggers
             ArgumentNullException.ThrowIfNull(concurrencyManager);
             ArgumentNullException.ThrowIfNull(drainModeManager);
             ArgumentNullException.ThrowIfNull(sqsClient);
+            ArgumentNullException.ThrowIfNull(sqsOptions);
 
             _nameResolver = nameResolver;
             _queueOptions = queueOptions.Value;
@@ -91,6 +95,7 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Triggers
             _concurrencyManager = concurrencyManager;
             _drainModeManager = drainModeManager;
             _sqsClient = sqsClient;
+            _sqsOptions = sqsOptions;
 
             _innerProvider = new CompositeQueueTriggerArgumentBindingProvider(
                 new ConverterArgumentBindingProvider<SQSMessage>(new SQSMessageDirectConverter(), loggerFactory),
@@ -131,7 +136,7 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Triggers
             var argumentBinding = _innerProvider.TryCreate(parameter)
                 ?? throw new InvalidOperationException($"Can't bind QueueTrigger to type '{parameter.ParameterType}'.");
 
-            var queue = new SQSQueue(queueName, _sqsClient, _loggerFactory);
+            var queue = new SQSQueue(queueName, _sqsClient, _loggerFactory, _sqsOptions);
 
             var binding = new SQSTriggerBinding(
                 parameter.Name,

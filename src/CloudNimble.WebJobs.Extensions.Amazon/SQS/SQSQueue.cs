@@ -5,6 +5,7 @@ using Amazon.SQS;
 using Amazon.SQS.Model;
 using CloudNimble.WebJobs.Extensions.Common.Queues;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -27,6 +28,11 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS
         /// The Amazon SQS client used to interact with the SQS service.
         /// </summary>
         private readonly IAmazonSQS _sqsClient;
+
+        /// <summary>
+        /// The SQS-specific options for queue configuration.
+        /// </summary>
+        private readonly SQSOptions _sqsOptions;
 
         /// <summary>
         /// Cached queue URL to avoid repeated lookups.
@@ -137,9 +143,10 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS
         /// <param name="queueName">The name of the queue.</param>
         /// <param name="sqsClient">The Amazon SQS client.</param>
         /// <param name="loggerFactory">The logger factory.</param>
+        /// <param name="sqsOptions">The SQS-specific options. If null, default values will be used.</param>
         /// <exception cref="ArgumentNullException">Thrown when any required parameter is null.</exception>
         /// <exception cref="ArgumentException">Thrown when queueName is null or whitespace.</exception>
-        public SQSQueue(string queueName, IAmazonSQS sqsClient, ILoggerFactory loggerFactory)
+        public SQSQueue(string queueName, IAmazonSQS sqsClient, ILoggerFactory loggerFactory, IOptions<SQSOptions> sqsOptions = null)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(queueName);
             ArgumentNullException.ThrowIfNull(sqsClient);
@@ -147,6 +154,7 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS
 
             Name = queueName;
             _sqsClient = sqsClient;
+            _sqsOptions = sqsOptions?.Value ?? new SQSOptions();
             Logger = loggerFactory.CreateLogger<SQSQueue>();
         }
 
@@ -247,7 +255,10 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS
             // Only add FIFO attributes if this is actually a FIFO queue
             if (IsFifoName)
             {
-                request.MessageGroupId = "default";
+                // Use configured message group ID or default
+                request.MessageGroupId = _sqsOptions.MessageGroupId;
+                
+                // Generate deduplication ID based on configuration
                 request.MessageDeduplicationId = GenerateDeduplicationId(messageBody);
             }
 
@@ -460,11 +471,11 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS
                 }
             };
 
-            // Only add FIFO attributes for FIFO queues
+            // Only add FIFO attributes for FIFO queues, using configuration values
             if (IsFifoName)
             {
                 request.Attributes["FifoQueue"] = "true";
-                request.Attributes["ContentBasedDeduplication"] = "true";
+                request.Attributes["ContentBasedDeduplication"] = _sqsOptions.UseContentBasedDeduplication.ToString().ToLowerInvariant();
             }
 
             var response = await _sqsClient.CreateQueueAsync(request, cancellationToken);
@@ -479,7 +490,8 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS
         /// <returns>A deduplication ID.</returns>
         private string GenerateDeduplicationId(string messageBody)
         {
-            if (UseContentBasedDeduplication)
+            // If the queue or options specify content-based deduplication, generate hash
+            if (UseContentBasedDeduplication || _sqsOptions.UseContentBasedDeduplication)
             {
                 return Convert.ToBase64String(
                     System.Security.Cryptography.SHA256.HashData(

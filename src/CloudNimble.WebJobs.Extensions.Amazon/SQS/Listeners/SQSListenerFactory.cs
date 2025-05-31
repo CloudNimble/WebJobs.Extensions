@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using Amazon.SQS;
+using CloudNimble.WebJobs.Extensions.Amazon.SQS;
 using CloudNimble.WebJobs.Extensions.Amazon.SQS.Triggers;
 using CloudNimble.WebJobs.Extensions.Common;
 using CloudNimble.WebJobs.Extensions.Common.Queues;
@@ -12,6 +13,7 @@ using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using System;
 using System.Reflection;
 using System.Threading;
@@ -44,6 +46,7 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Listeners
         private readonly QueueMessageCausalityManager _queueCausalityManager;
         private readonly QueuesOptionsBase _queueOptions;
         private readonly IQueueProcessorFactory _queueProcessorFactory;
+        private readonly IOptions<SQSOptions> _sqsOptions;
 
         #endregion
 
@@ -64,6 +67,7 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Listeners
         /// <param name="concurrencyManager">The manager for controlling function execution concurrency.</param>
         /// <param name="drainModeManager">The manager for handling graceful shutdown and drain mode operations.</param>
         /// <param name="exceptionClassifier">The classifier for determining exception types and handling strategies.</param>
+        /// <param name="sqsOptions">The SQS-specific configuration options.</param>
         /// <exception cref="ArgumentNullException">Thrown when any required parameter is null.</exception>
         /// <example>
         /// <code>
@@ -79,7 +83,8 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Listeners
         ///     functionDescriptor,
         ///     concurrencyManager,
         ///     drainModeManager,
-        ///     exceptionClassifier);
+        ///     exceptionClassifier,
+        ///     sqsOptions);
         /// 
         /// var listener = await factory.CreateAsync();
         /// </code>
@@ -96,7 +101,8 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Listeners
             FunctionDescriptor descriptor,
             ConcurrencyManager concurrencyManager,
             IDrainModeManager drainModeManager,
-            IQueueRequestExceptionClassifier exceptionClassifier)
+            IQueueRequestExceptionClassifier exceptionClassifier,
+            IOptions<SQSOptions> sqsOptions)
         {
             ArgumentNullException.ThrowIfNull(queue);
             ArgumentNullException.ThrowIfNull(queueOptions);
@@ -107,6 +113,7 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Listeners
             ArgumentNullException.ThrowIfNull(descriptor);
             ArgumentNullException.ThrowIfNull(concurrencyManager);
             ArgumentNullException.ThrowIfNull(exceptionClassifier);
+            ArgumentNullException.ThrowIfNull(sqsOptions);
 
             _queue = queue;
             _queueOptions = queueOptions;
@@ -120,6 +127,7 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Listeners
             _concurrencyManager = concurrencyManager;
             _drainModeManager = drainModeManager;
             _exceptionClassifier = exceptionClassifier;
+            _sqsOptions = sqsOptions;
 
             // Create poison queue reference if applicable
             _poisonQueue = CreatePoisonQueueReference(_queue);
@@ -257,7 +265,8 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Listeners
             return new SQSQueue(
                 possiblePoisonQueueName,
                 GetSQSClientFromQueue(sourceQueue),
-                _loggerFactory);
+                _loggerFactory,
+                _sqsOptions);
         }
 
         /// <summary>
