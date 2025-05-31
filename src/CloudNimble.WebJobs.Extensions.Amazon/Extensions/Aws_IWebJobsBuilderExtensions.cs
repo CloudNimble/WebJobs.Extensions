@@ -69,13 +69,16 @@ namespace Microsoft.Azure.WebJobs
                 builder.Services.Configure<SQSOptions>(configureQueues);
             }
 
-            // Register both SQSOptions and QueuesOptionsBase to return the same instance
+           // Register both SQSOptions and QueuesOptionsBase to return the same instance
             // This allows existing code that depends on QueuesOptionsBase to continue working
             // while new code can use the enhanced SQSOptions
             builder.Services.TryAddSingleton<IOptions<SQSOptions>>(serviceProvider =>
-                serviceProvider.GetRequiredService<IOptionsMonitor<SQSOptions>>());
+            {
+                var monitor = serviceProvider.GetRequiredService<IOptionsMonitor<SQSOptions>>();
+                return Options.Create(monitor.CurrentValue);
+            });
             
-            builder.Services.TryAddSingleton<IOptions<QueuesOptionsBase>>(serviceProvider =>
+            builder.Services.TryAddSingleton(serviceProvider =>
             {
                 var sqsOptions = serviceProvider.GetRequiredService<IOptions<SQSOptions>>();
                 return Options.Create<QueuesOptionsBase>(sqsOptions.Value);
@@ -131,7 +134,7 @@ namespace Microsoft.Azure.WebJobs
                 p.GetService<IContextSetter<IMessageEnqueuedWatcher>>() as IContextGetter<IMessageEnqueuedWatcher>);
 
             // Register SQS-specific services
-            builder.Services.TryAddSingleton<SQSTriggerAttributeBindingProvider>(serviceProvider =>
+            builder.Services.TryAddSingleton(serviceProvider =>
                 new SQSTriggerAttributeBindingProvider(
                     serviceProvider.GetService<INameResolver>(),
                     serviceProvider.GetRequiredService<IOptions<QueuesOptionsBase>>(),

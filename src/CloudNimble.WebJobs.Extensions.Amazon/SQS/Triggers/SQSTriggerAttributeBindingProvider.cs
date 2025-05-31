@@ -150,7 +150,8 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Triggers
                 _queueCausalityManager,
                 _exceptionClassifier,
                 _concurrencyManager,
-                _drainModeManager);
+                _drainModeManager,
+                _sqsOptions);
 
             return Task.FromResult<ITriggerBinding>(binding);
         }
