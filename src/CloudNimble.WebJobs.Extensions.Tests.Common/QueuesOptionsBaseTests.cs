@@ -403,10 +403,10 @@ namespace CloudNimble.WebJobs.Extensions.Common.Tests.Queues
         }
 
         /// <summary>
-        /// Tests that Format method includes all expected properties.
+        /// Tests that Format method includes all expected properties in camelCase.
         /// </summary>
         [TestMethod]
-        public void Format_WhenCalled_ShouldIncludeAllProperties()
+        public void Format_WhenCalled_ShouldIncludeAllPropertiesInCamelCase()
         {
             var options = new QueuesOptionsBase
             {
@@ -424,17 +424,18 @@ namespace CloudNimble.WebJobs.Extensions.Common.Tests.Queues
             using var document = JsonDocument.Parse(json);
             var root = document.RootElement;
 
-            root.GetProperty("BatchSize").GetInt32().Should().Be(20);
-            root.GetProperty("NewBatchThreshold").GetInt32().Should().Be(10);
-            root.GetProperty("MaxDequeueCount").GetInt32().Should().Be(8);
-            root.GetProperty("MessageEncoding").GetString().Should().Be("None");
+            // Verify camelCase property names
+            root.GetProperty("batchSize").GetInt32().Should().Be(20);
+            root.GetProperty("newBatchThreshold").GetInt32().Should().Be(10);
+            root.GetProperty("maxDequeueCount").GetInt32().Should().Be(8);
+            root.GetProperty("messageEncoding").GetString().Should().Be("none");
         }
 
         /// <summary>
-        /// Tests that Format method handles TimeSpan properties correctly.
+        /// Tests that Format method handles TimeSpan properties correctly with camelCase.
         /// </summary>
         [TestMethod]
-        public void Format_WhenCalledWithTimeSpanProperties_ShouldSerializeCorrectly()
+        public void Format_WhenCalledWithTimeSpanProperties_ShouldSerializeCorrectlyInCamelCase()
         {
             var options = new QueuesOptionsBase
             {
@@ -445,10 +446,34 @@ namespace CloudNimble.WebJobs.Extensions.Common.Tests.Queues
 
             var json = formatter.Format();
 
-            json.Should().Contain("MaxPollingInterval");
-            json.Should().Contain("VisibilityTimeout");
+            // Verify camelCase property names for TimeSpan properties
+            json.Should().Contain("maxPollingInterval");
+            json.Should().Contain("visibilityTimeout");
             var action = () => JsonDocument.Parse(json);
             action.Should().NotThrow();
+        }
+
+        /// <summary>
+        /// Tests that enum values are serialized in camelCase.
+        /// </summary>
+        [TestMethod]
+        public void Format_WhenCalledWithEnumValues_ShouldSerializeEnumsInCamelCase()
+        {
+            var optionsBase64 = new QueuesOptionsBase
+            {
+                MessageEncoding = QueueMessageEncoding.Base64
+            };
+            var optionsNone = new QueuesOptionsBase
+            {
+                MessageEncoding = QueueMessageEncoding.None
+            };
+
+            var jsonBase64 = ((IOptionsFormatter)optionsBase64).Format();
+            var jsonNone = ((IOptionsFormatter)optionsNone).Format();
+
+            // Verify enum values are camelCase
+            jsonBase64.Should().Contain("\"messageEncoding\": \"base64\"");
+            jsonNone.Should().Contain("\"messageEncoding\": \"none\"");
         }
 
         #endregion

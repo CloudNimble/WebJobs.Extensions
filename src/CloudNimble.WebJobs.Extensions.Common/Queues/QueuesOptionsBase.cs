@@ -7,6 +7,7 @@ using System;
 using System.ComponentModel;
 using System.Globalization;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace CloudNimble.WebJobs.Extensions.Common.Queues
 {
@@ -195,7 +196,7 @@ namespace CloudNimble.WebJobs.Extensions.Common.Queues
                 MaxPollingInterval,
                 MaxDequeueCount,
                 VisibilityTimeout,
-                MessageEncoding = MessageEncoding.ToString()
+                MessageEncoding
             };
 
             return JsonSerializer.Serialize(options, JsonSerialization.Options);
