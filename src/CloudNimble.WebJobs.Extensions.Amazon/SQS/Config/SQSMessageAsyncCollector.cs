@@ -1,4 +1,7 @@
-﻿using CloudNimble.EasyAF.Core;
+﻿// Copyright (c) CloudNimble, Inc. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
+using CloudNimble.EasyAF.Core;
 using CloudNimble.WebJobs.Extensions.Common;
 using Microsoft.Azure.WebJobs;
 using System;

@@ -1,4 +1,7 @@
-﻿using Amazon.SQS;
+﻿// Copyright (c) CloudNimble, Inc. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
+using Amazon.SQS;
 using CloudNimble.EasyAF.Core;
 using CloudNimble.WebJobs.Extensions.Amazon.SQS.Triggers;
 using CloudNimble.WebJobs.Extensions.Common;

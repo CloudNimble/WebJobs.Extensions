@@ -1,11 +1,10 @@
-﻿// Copyright (c) Microsoft Corporation. All rights reserved.
-// Licensed under the MIT License.
+﻿// Copyright (c) CloudNimble, Inc. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
 
 using CloudNimble.EasyAF.Core;
-using CloudNimble.WebJobs.Extensions.Amazon.SQS;
-using System;
+using Microsoft.Azure.WebJobs;
 
-namespace Microsoft.Azure.WebJobs.Extensions.Storage.Queues.Triggers
+namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Triggers
 {
     internal class SQSMessageDirectConverter : IConverter<SQSMessage, SQSMessage>
     {

@@ -16,17 +16,22 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS
 {
 
     /// <summary>
-    /// A wrapper for a specific Amazon SQS queue.
+    /// A wrapper for a specific Amazon SQS queue that implements the common queue client interface.
     /// </summary>
     internal partial class SQSQueue : IQueueClient
     {
 
-        #region Private Members
+        #region Private Fields
 
         /// <summary>
         /// The Amazon SQS client used to interact with the SQS service.
         /// </summary>
         private readonly IAmazonSQS _sqsClient;
+
+        /// <summary>
+        /// Cached queue URL to avoid repeated lookups.
+        /// </summary>
+        private string _queueUrl;
 
         #endregion
 
@@ -108,19 +113,19 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS
         public string QueueArn { get; private set; }
 
         /// <summary>
-        /// Gets or sets the visibility timeout in seconds.
+        /// Gets a value indicating whether the queue has content-based deduplication enabled.
         /// </summary>
-        public int VisibilityTimeoutInSeconds { get; set; } = 30;
+        public bool UseContentBasedDeduplication { get; private set; }
 
         /// <summary>
         /// Gets the URL of the queue.
         /// </summary>
-        public string Url => GetQueueUrl();
+        public string Url => _queueUrl ?? $"https://sqs.{_sqsClient.Config.RegionEndpoint?.SystemName ?? "us-east-1"}.amazonaws.com/{AccountName}/{Name}";
 
         /// <summary>
-        /// Gets a value indicating whether the queue has content-based deduplication enabled.
+        /// Gets or sets the visibility timeout in seconds.
         /// </summary>
-        public bool UseContentBasedDeduplication { get; private set; }
+        public int VisibilityTimeoutInSeconds { get; set; } = 30;
 
         #endregion
 
@@ -132,8 +137,14 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS
         /// <param name="queueName">The name of the queue.</param>
         /// <param name="sqsClient">The Amazon SQS client.</param>
         /// <param name="loggerFactory">The logger factory.</param>
+        /// <exception cref="ArgumentNullException">Thrown when any required parameter is null.</exception>
+        /// <exception cref="ArgumentException">Thrown when queueName is null or whitespace.</exception>
         public SQSQueue(string queueName, IAmazonSQS sqsClient, ILoggerFactory loggerFactory)
         {
+            ArgumentException.ThrowIfNullOrWhiteSpace(queueName);
+            ArgumentNullException.ThrowIfNull(sqsClient);
+            ArgumentNullException.ThrowIfNull(loggerFactory);
+
             Name = queueName;
             _sqsClient = sqsClient;
             Logger = loggerFactory.CreateLogger<SQSQueue>();
@@ -149,6 +160,18 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS
         /// <param name="queueName">The queue name to validate.</param>
         /// <param name="errorMessage">The error message if the queue name is invalid.</param>
         /// <returns>True if the queue name is valid, otherwise false.</returns>
+        /// <example>
+        /// <code>
+        /// if (SQSQueue.IsValidQueueName("my-queue", out string error))
+        /// {
+        ///     Console.WriteLine("Queue name is valid");
+        /// }
+        /// else
+        /// {
+        ///     Console.WriteLine($"Invalid queue name: {error}");
+        /// }
+        /// </code>
+        /// </example>
         public static bool IsValidQueueName(string queueName, out string errorMessage)
         {
             if (string.IsNullOrWhiteSpace(queueName))
@@ -202,49 +225,31 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS
         #region Public Methods
 
         /// <summary>
-        /// Fetches the attributes of the SQS queue.
-        /// </summary>
-        /// <param name="cancellationToken">The cancellation token.</param>
-        public async Task UpdateAttributesAsync(CancellationToken cancellationToken = default)
-        {
-            var response = await _sqsClient.GetQueueAttributesAsync(Name, ["All"], cancellationToken);
-            ApproximateMessageCount = response.ApproximateNumberOfMessages;
-            ApproximateMessagesDelayedCount = response.ApproximateNumberOfMessagesDelayed;
-            ApproximateMessagesProcessingCount = response.ApproximateNumberOfMessagesNotVisible;
-            UseContentBasedDeduplication = response.ContentBasedDeduplication ?? false;
-            CreatedTimestamp = response.CreatedTimestamp;
-            DelaySeconds = response.DelaySeconds;
-            HasFifoAttribute = response.FifoQueue;
-            LastModifiedTimestamp = response.LastModifiedTimestamp;
-            MaximumMessageSizeInBytes = response.MaximumMessageSize;
-            MessageRetentionPeriod = response.MessageRetentionPeriod;
-            Policy = response.Policy;
-            QueueArn = response.QueueARN;
-            VisibilityTimeoutInSeconds = response.VisibilityTimeout;
-        }
-
-        /// <summary>
         /// Adds a message to the queue and creates the queue if it does not exist.
         /// </summary>
         /// <param name="messageBody">The message body.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        /// <exception cref="ArgumentException">Thrown when messageBody is null or whitespace.</exception>
         public async Task AddMessageAndCreateIfNotExistsAsync(string messageBody, CancellationToken cancellationToken = default)
         {
+            ArgumentException.ThrowIfNullOrWhiteSpace(messageBody);
+
             await CreateIfNotExistsAsync(cancellationToken);
 
+            var queueUrl = await GetQueueUrlAsync();
             var request = new SendMessageRequest
             {
-                QueueUrl = Name,
-                MessageBody = messageBody,
-                // RWM: FIFO queues require MessageGroupId and MessageDeduplicationId
-                //      The inclination here might be to use different groups for different types of messages. However,
-                //      if you are in need of different priorities in processing, for consistency with the WebJobs SDK,
-                //      it may be best to use separate queues instead, since MessageGroups are not a universal construct.
-
-                MessageGroupId = "default",
-                // RWM: Message body hashing will be used to ensure that the same message is not sent to the queue more than once.
-                MessageDeduplicationId = GenerateDeduplicationId(messageBody)
+                QueueUrl = queueUrl,
+                MessageBody = messageBody
             };
+
+            // Only add FIFO attributes if this is actually a FIFO queue
+            if (IsFifoName)
+            {
+                request.MessageGroupId = "default";
+                request.MessageDeduplicationId = GenerateDeduplicationId(messageBody);
+            }
 
             await _sqsClient.SendMessageAsync(request, cancellationToken);
         }
@@ -255,11 +260,16 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS
         /// <param name="id">The message ID.</param>
         /// <param name="popReceipt">The pop receipt.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        /// <exception cref="ArgumentException">Thrown when popReceipt is null or whitespace.</exception>
         public async Task DeleteMessageAsync(string id, string popReceipt, CancellationToken cancellationToken)
         {
+            ArgumentException.ThrowIfNullOrWhiteSpace(popReceipt);
+
+            var queueUrl = await GetQueueUrlAsync();
             var request = new DeleteMessageRequest
             {
-                QueueUrl = Name,
+                QueueUrl = queueUrl,
                 ReceiptHandle = popReceipt
             };
 
@@ -270,23 +280,21 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS
         /// Checks if the queue exists.
         /// </summary>
         /// <param name="cancellationToken">The cancellation token.</param>
-        /// <returns>True if the queue exists, otherwise false.</returns>
+        /// <returns>True if the queue exists, false if it doesn't exist, null if the check fails.</returns>
         public async Task<bool?> ExistsAsync(CancellationToken cancellationToken)
         {
             try
             {
-                var request = new GetQueueAttributesRequest
-                {
-                    QueueUrl = Name,
-                    AttributeNames = ["All"]
-                };
-
-                await _sqsClient.GetQueueAttributesAsync(request, cancellationToken);
+                await GetQueueUrlAsync();
                 return true;
             }
             catch (QueueDoesNotExistException)
             {
                 return false;
+            }
+            catch
+            {
+                return null;
             }
         }
 
@@ -313,6 +321,7 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS
         /// <summary>
         /// Peeks messages from the queue.
         /// </summary>
+        /// <typeparam name="TQueueMessage">The type of queue message.</typeparam>
         /// <param name="count">The number of messages to peek.</param>
         /// <returns>The queue response.</returns>
         public async Task<QueueResponse<TQueueMessage>> PeekMessagesAsync<TQueueMessage>(int count)
@@ -325,18 +334,21 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS
         /// <summary>
         /// Receives messages from the queue.
         /// </summary>
+        /// <typeparam name="TQueueMessage">The type of queue message.</typeparam>
         /// <param name="numMessagesToReceive">The number of messages to receive.</param>
         /// <param name="visibilityTimeout">The visibility timeout.</param>
         /// <param name="token">The cancellation token.</param>
         /// <returns>The queue response.</returns>
+        /// <exception cref="InvalidOperationException">Thrown when the queue doesn't exist.</exception>
         public async Task<QueueResponse<TQueueMessage>> ReceiveMessagesAsync<TQueueMessage>(
             int numMessagesToReceive,
             TimeSpan visibilityTimeout,
             CancellationToken token) where TQueueMessage : IQueueMessage
         {
+            var queueUrl = await GetQueueUrlAsync() ?? throw new InvalidOperationException($"Queue '{Name}' does not exist");
             var request = new ReceiveMessageRequest
             {
-                QueueUrl = Name,
+                QueueUrl = queueUrl,
                 MaxNumberOfMessages = Math.Min(numMessagesToReceive, 10), // SQS max is 10
                 VisibilityTimeout = (int)visibilityTimeout.TotalSeconds,
                 MessageSystemAttributeNames = ["All"],
@@ -348,7 +360,7 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS
             return new QueueResponse<TQueueMessage>
             {
                 ClientRequestId = response.ResponseMetadata.RequestId,
-                Value = [.. response.Messages.Select(m => (TQueueMessage)Activator.CreateInstance(typeof(TQueueMessage), m))]
+                Value = response.Messages.Select(m => (TQueueMessage)(object)new SQSMessage(m, queueUrl)).ToList()
             };
         }
 
@@ -360,15 +372,19 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS
         /// <param name="visibilityTimeout">The visibility timeout.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>The queue message update receipt.</returns>
+        /// <exception cref="ArgumentException">Thrown when popReceipt is null or whitespace.</exception>
         public async Task<QueueMessageUpdateReceipt> UpdateMessageAsync(
             string id,
             string popReceipt,
             TimeSpan visibilityTimeout,
             CancellationToken cancellationToken)
         {
+            ArgumentException.ThrowIfNullOrWhiteSpace(popReceipt);
+
+            var queueUrl = await GetQueueUrlAsync();
             var request = new ChangeMessageVisibilityRequest
             {
-                QueueUrl = Name,
+                QueueUrl = queueUrl,
                 ReceiptHandle = popReceipt,
                 VisibilityTimeout = (int)visibilityTimeout.TotalSeconds
             };
@@ -382,17 +398,50 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS
             };
         }
 
+        /// <summary>
+        /// Fetches the attributes of the SQS queue.
+        /// </summary>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        public async Task UpdateAttributesAsync(CancellationToken cancellationToken = default)
+        {
+            var queueUrl = await GetQueueUrlAsync();
+            if (queueUrl is null)
+            {
+                return;
+            }
+
+            var request = new GetQueueAttributesRequest
+            {
+                QueueUrl = queueUrl,
+                AttributeNames = ["All"]
+            };
+
+            var response = await _sqsClient.GetQueueAttributesAsync(request, cancellationToken);
+            ApproximateMessageCount = response.ApproximateNumberOfMessages;
+            ApproximateMessagesDelayedCount = response.ApproximateNumberOfMessagesDelayed;
+            ApproximateMessagesProcessingCount = response.ApproximateNumberOfMessagesNotVisible;
+            UseContentBasedDeduplication = response.ContentBasedDeduplication ?? false;
+            CreatedTimestamp = response.CreatedTimestamp;
+            DelaySeconds = response.DelaySeconds;
+            HasFifoAttribute = response.FifoQueue;
+            LastModifiedTimestamp = response.LastModifiedTimestamp;
+            MaximumMessageSizeInBytes = response.MaximumMessageSize;
+            MessageRetentionPeriod = response.MessageRetentionPeriod;
+            Policy = response.Policy;
+            QueueArn = response.QueueARN;
+            VisibilityTimeoutInSeconds = response.VisibilityTimeout;
+        }
+
         #endregion
 
         #region Private Methods
 
         /// <summary>
-        /// Gets the regular expression for validating queue names.
+        /// Creates the queue if it does not exist.
         /// </summary>
-        /// <returns>The regular expression.</returns>
-        [GeneratedRegex("^[a-zA-Z0-9][a-zA-Z0-9-_]*$")]
-        private static partial Regex ValidQueueNameRegex();
-
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
         internal async Task CreateIfNotExistsAsync(CancellationToken cancellationToken)
         {
             if (await ExistsAsync(cancellationToken) == true)
@@ -405,23 +454,32 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS
                 QueueName = Name,
                 Attributes = new Dictionary<string, string>
                 {
-                    { "FifoQueue", "true" },
-                    { "ContentBasedDeduplication", "true" },
                     { "VisibilityTimeout", VisibilityTimeoutInSeconds.ToString() },
                     { "MessageRetentionPeriod", MessageRetentionPeriod.ToString() },
                     { "DelaySeconds", DelaySeconds.ToString() }
                 }
             };
 
-            await _sqsClient.CreateQueueAsync(request, cancellationToken);
+            // Only add FIFO attributes for FIFO queues
+            if (IsFifoName)
+            {
+                request.Attributes["FifoQueue"] = "true";
+                request.Attributes["ContentBasedDeduplication"] = "true";
+            }
+
+            var response = await _sqsClient.CreateQueueAsync(request, cancellationToken);
+            _queueUrl = response.QueueUrl; // Cache the URL from creation
             await UpdateAttributesAsync(cancellationToken);
         }
+
         /// <summary>
-        /// Generates a deduplication ID based on content or custom strategy
+        /// Generates a deduplication ID based on content or custom strategy.
         /// </summary>
+        /// <param name="messageBody">The message body to generate a deduplication ID for.</param>
+        /// <returns>A deduplication ID.</returns>
         private string GenerateDeduplicationId(string messageBody)
         {
-            if (this.UseContentBasedDeduplication)
+            if (UseContentBasedDeduplication)
             {
                 return Convert.ToBase64String(
                     System.Security.Cryptography.SHA256.HashData(
@@ -429,18 +487,43 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS
                     )
                 );
             }
+
             return Guid.NewGuid().ToString();
         }
 
-        private string GetQueueUrl()
+        /// <summary>
+        /// Gets the queue URL, resolving it from AWS if not cached.
+        /// </summary>
+        /// <returns>The queue URL, or null if the queue doesn't exist.</returns>
+        private async Task<string> GetQueueUrlAsync()
         {
-            if (Name.StartsWith("https://"))
-                return Name;
+            if (!string.IsNullOrWhiteSpace(_queueUrl))
+            {
+                return _queueUrl;
+            }
 
-            return $"https://sqs.{_sqsClient.Config.RegionEndpoint.SystemName}.amazonaws.com/{AccountName}/{Name}";
+            try
+            {
+                var response = await _sqsClient.GetQueueUrlAsync(Name);
+                _queueUrl = response.QueueUrl;
+                return _queueUrl;
+            }
+            catch (QueueDoesNotExistException)
+            {
+                // Queue doesn't exist yet - this is OK for create-if-not-exists scenarios
+                return null;
+            }
         }
 
+        /// <summary>
+        /// Gets the regular expression for validating queue names.
+        /// </summary>
+        /// <returns>The regular expression.</returns>
+        [GeneratedRegex("^[a-zA-Z0-9][a-zA-Z0-9-_]*$")]
+        private static partial Regex ValidQueueNameRegex();
+
         #endregion
+
     }
 
 }

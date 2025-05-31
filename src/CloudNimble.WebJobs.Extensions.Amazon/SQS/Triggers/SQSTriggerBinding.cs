@@ -7,7 +7,6 @@ using CloudNimble.WebJobs.Extensions.Amazon.SQS.Listeners;
 using CloudNimble.WebJobs.Extensions.Common.Converters;
 using CloudNimble.WebJobs.Extensions.Common.Queues;
 using CloudNimble.WebJobs.Extensions.Common.Triggers;
-using Microsoft.Azure.WebJobs.Extensions.Storage.Queues.Triggers;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Listeners;

@@ -1,5 +1,5 @@
-﻿// Copyright (c) Microsoft Corporation. All rights reserved.
-// Licensed under the MIT License.
+﻿// Copyright (c) CloudNimble, Inc. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
 
 using CloudNimble.WebJobs.Extensions.Common.Queues;
 using Microsoft.Azure.WebJobs;

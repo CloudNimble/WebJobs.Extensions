@@ -21,6 +21,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CloudNimble.WebJobs.Extensi
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Prototype", "Prototype\Prototype.csproj", "{D9136600-7313-4A14-9B49-DBBE9352C68C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CloudNimble.WebJobs.Extensions.Examples", "CloudNimble.WebJobs.Extensions.Examples\CloudNimble.WebJobs.Extensions.Examples.csproj", "{D1041707-655F-4C5E-B0D5-C1697AF2B286}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Examples", "Examples", "{02EA681E-C7D8-13C7-8484-4AC65E1B71E8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -42,6 +46,10 @@ Global
 		{D9136600-7313-4A14-9B49-DBBE9352C68C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{D9136600-7313-4A14-9B49-DBBE9352C68C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D9136600-7313-4A14-9B49-DBBE9352C68C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D1041707-655F-4C5E-B0D5-C1697AF2B286}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D1041707-655F-4C5E-B0D5-C1697AF2B286}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D1041707-655F-4C5E-B0D5-C1697AF2B286}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D1041707-655F-4C5E-B0D5-C1697AF2B286}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -50,6 +58,7 @@ Global
 		{02443BDD-3955-44F6-A6DC-EE3468A186B0} = {FF00F677-C41B-4D80-BB0E-852C3D17B472}
 		{6E20CB3D-BF70-42DC-92B8-CBE2A17DE57D} = {30BF4AC8-083A-488B-BFA9-C6D6BCF95959}
 		{7939F413-E210-49B4-8DD6-B90530C553AF} = {752A388B-86D8-4B64-888D-A342A41BFA7F}
+		{D1041707-655F-4C5E-B0D5-C1697AF2B286} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {1F1029F8-B736-442C-9D5C-A58BC288657B}

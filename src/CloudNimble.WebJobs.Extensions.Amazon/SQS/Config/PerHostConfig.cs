@@ -1,4 +1,7 @@
-﻿using Amazon.SQS;
+﻿// Copyright (c) CloudNimble, Inc. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
+using Amazon.SQS;
 using CloudNimble.WebJobs.Extensions.Common;
 using CloudNimble.WebJobs.Extensions.Common.Queues;
 using Microsoft.Azure.WebJobs;
