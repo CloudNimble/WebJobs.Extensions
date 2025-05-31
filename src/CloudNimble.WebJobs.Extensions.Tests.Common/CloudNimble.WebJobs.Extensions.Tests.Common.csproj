@@ -5,7 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\CloudNimble.WebJobs.Extensions.Amazon\CloudNimble.WebJobs.Extensions.Amazon.csproj" />
+    <ProjectReference Include="..\CloudNimble.WebJobs.Extensions.Common\CloudNimble.WebJobs.Extensions.Common.csproj" />
   </ItemGroup>
 
 </Project>

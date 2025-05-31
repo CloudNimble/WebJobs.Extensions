@@ -102,10 +102,9 @@
 
 	<ItemGroup Condition=" $(IsTestProject) != 'true' and  $(IsSampleProject) != 'true'">
 		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.*" PrivateAssets="All" />
-		<!-- RWM: The code quality on the unit tests right now is not awesome, so let's skip checking it for now. -->
-		<PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.*-*">
-			<PrivateAssets>all</PrivateAssets>
-		</PackageReference>
+		<PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.*" PrivateAssets="All" />
+		<InternalsVisibleTo Include="$(AssemblyName.Replace('CloudNimble.WebJobs.Extensions', 'CloudNimble.WebJobs.Extensions.Tests'))" /> <!--, $(StrongNamePublicKey)" /> -->
+
 	</ItemGroup>
 
 	<ItemGroup Condition=" $(IsTestProject) == 'true'  and  $(IsSampleProject) != 'true'">
