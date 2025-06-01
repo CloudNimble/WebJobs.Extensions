@@ -4,7 +4,7 @@
 using CloudNimble.WebJobs.Extensions.Common.Timers;
 using System;
 
-namespace CloudNimble.WebJobs.Extensions.Common.Tests.Commands
+namespace CloudNimble.WebJobs.Extensions.Tests.Common.Commands
 {
     #region Test Helper Classes
 

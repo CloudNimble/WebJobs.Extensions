@@ -9,7 +9,7 @@ namespace CloudNimble.WebJobs.Extensions.Tests.Common.Models
     /// <summary>
     /// Test implementation of IQueueMessage for testing purposes.
     /// </summary>
-    internal class TestQueueMessage : IQueueMessage
+    public class TestQueueMessage : IQueueMessage
     {
         public string Body { get; set; }
         public int DequeueCount { get; set; }

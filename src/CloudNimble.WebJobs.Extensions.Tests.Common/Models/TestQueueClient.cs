@@ -4,6 +4,7 @@
 using CloudNimble.WebJobs.Extensions.Common.Queues;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -12,13 +13,18 @@ namespace CloudNimble.WebJobs.Extensions.Tests.Common.Models
     /// <summary>
     /// Enhanced test implementation of IQueueClient with tracking for testing purposes.
     /// </summary>
-    internal class TestQueueClient : IQueueClient
+    public class TestQueueClient : IQueueClient
     {
         public string Name { get; set; }
         public string AccountName { get; set; }
         public bool ShouldThrowOnUpdate { get; set; } = false;
         public bool ShouldThrowOnDelete { get; set; } = false;
         public Exception ExceptionToThrow { get; set; }
+        public bool ExistsResult { get; set; } = true;
+        public List<IQueueMessage> Messages { get; set; } = new();
+        public int ExistsCallCount { get; private set; }
+        public int ReceiveMessagesCallCount { get; private set; }
+        public int LastRequestedMessageCount { get; private set; }
 
         public List<string> AddedMessages { get; } = new();
         public List<(string Id, string PopReceipt)> DeletedMessages { get; } = new();
@@ -43,7 +49,8 @@ namespace CloudNimble.WebJobs.Extensions.Tests.Common.Models
 
         public Task<bool?> ExistsAsync(CancellationToken cancellationToken)
         {
-            return Task.FromResult<bool?>(true);
+            ExistsCallCount++;
+            return Task.FromResult<bool?>(ExistsResult);
         }
 
         public Task<QueueProperties> GetPropertiesAsync()
@@ -58,7 +65,15 @@ namespace CloudNimble.WebJobs.Extensions.Tests.Common.Models
 
         public Task<QueueResponse<TQueueMessage>> ReceiveMessagesAsync<TQueueMessage>(int numMessagesToReceive, TimeSpan visibilityTimeout, CancellationToken token) where TQueueMessage : IQueueMessage
         {
-            return Task.FromResult(new QueueResponse<TQueueMessage>());
+            ReceiveMessagesCallCount++;
+            LastRequestedMessageCount = numMessagesToReceive;
+            
+            var messagesToReturn = Messages.Take(numMessagesToReceive).Cast<TQueueMessage>().ToList();
+            return Task.FromResult(new QueueResponse<TQueueMessage> 
+            { 
+                Value = messagesToReturn,
+                ClientRequestId = Guid.NewGuid().ToString()
+            });
         }
 
         public Task<QueueMessageUpdateReceipt> UpdateMessageAsync(string id, string popReceipt, TimeSpan visibilityTimeout, CancellationToken cancellationToken)

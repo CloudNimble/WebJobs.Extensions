@@ -19,8 +19,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{30BF4AC8
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CloudNimble.WebJobs.Extensions.Common", "CloudNimble.WebJobs.Extensions.Common\CloudNimble.WebJobs.Extensions.Common.csproj", "{7939F413-E210-49B4-8DD6-B90530C553AF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Prototype", "Prototype\Prototype.csproj", "{D9136600-7313-4A14-9B49-DBBE9352C68C}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CloudNimble.WebJobs.Extensions.Examples", "CloudNimble.WebJobs.Extensions.Examples\CloudNimble.WebJobs.Extensions.Examples.csproj", "{D1041707-655F-4C5E-B0D5-C1697AF2B286}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Examples", "Examples", "{02EA681E-C7D8-13C7-8484-4AC65E1B71E8}"
@@ -45,9 +43,6 @@ Global
 		{7939F413-E210-49B4-8DD6-B90530C553AF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7939F413-E210-49B4-8DD6-B90530C553AF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7939F413-E210-49B4-8DD6-B90530C553AF}.Release|Any CPU.Build.0 = Release|Any CPU
-		{D9136600-7313-4A14-9B49-DBBE9352C68C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{D9136600-7313-4A14-9B49-DBBE9352C68C}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{D9136600-7313-4A14-9B49-DBBE9352C68C}.Release|Any CPU.Build.0 = Release|Any CPU
 		{D1041707-655F-4C5E-B0D5-C1697AF2B286}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{D1041707-655F-4C5E-B0D5-C1697AF2B286}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D1041707-655F-4C5E-B0D5-C1697AF2B286}.Release|Any CPU.ActiveCfg = Release|Any CPU

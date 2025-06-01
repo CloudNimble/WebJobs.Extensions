@@ -1,6 +1,7 @@
 ﻿// Copyright (c) CloudNimble, Inc. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using CloudNimble.WebJobs.Extensions.Common;
 using CloudNimble.WebJobs.Extensions.Common.Queues;
 using CloudNimble.WebJobs.Extensions.Common.Timers;
 using CloudNimble.WebJobs.Extensions.Tests.Common.Models;
@@ -10,7 +11,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace CloudNimble.WebJobs.Extensions.Common.Tests.Commands
+namespace CloudNimble.WebJobs.Extensions.Tests.Common.Commands
 {
 
     /// <summary>

@@ -9,7 +9,7 @@ namespace CloudNimble.WebJobs.Extensions.Tests.Common.Models
     /// <summary>
     /// Test implementation of IQueueRequestExceptionClassifier for testing purposes.
     /// </summary>
-    internal class TestQueueRequestExceptionClassifier : IQueueRequestExceptionClassifier
+    public class TestQueueRequestExceptionClassifier : IQueueRequestExceptionClassifier
     {
         public bool IsServerSideExceptionResult { get; set; } = false;
         public bool IsPopReceiptMismatchResult { get; set; } = false;
