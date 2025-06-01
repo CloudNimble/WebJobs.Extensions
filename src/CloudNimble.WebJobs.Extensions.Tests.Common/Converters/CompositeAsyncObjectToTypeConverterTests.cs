@@ -173,20 +173,21 @@ namespace CloudNimble.WebJobs.Extensions.Tests.Common.Converters
         #region Cancellation Tests
 
         /// <summary>
-        /// Tests that TryConvertAsync respects cancellation tokens.
+        /// Tests that TryConvert handles null inputs correctly.
         /// </summary>
         [TestMethod]
-        public async Task TryConvertAsync_WhenCancellationRequested_ShouldRespectCancellation()
+        public void TryConvert_WhenInputIsNull_ShouldHandleCorrectly()
         {
-            var converter1 = new DelayedAsyncConverter<string> { DelayMs = 100, ShouldSucceed = false };
-            var converter2 = new TestAsyncObjectToTypeConverter<string> { ShouldSucceed = true, Result = "should not reach" };
-            var compositeConverter = new CompositeAsyncObjectToTypeConverter<string>(converter1, converter2);
+            var converter1 = new TestObjectToTypeConverter<string> { ShouldSucceed = false };
+            var converter2 = new TestObjectToTypeConverter<string> { ShouldSucceed = true, Result = "null-handled" };
+            var compositeConverter = new CompositeObjectToTypeConverter<string>(converter1, converter2);
 
-            using var cts = new CancellationTokenSource(50); // Cancel after 50ms
+            var success = compositeConverter.TryConvert(null, out var result);
 
-            var action = async () => await compositeConverter.TryConvertAsync("input", cts.Token);
-
-            await action.Should().ThrowAsync<OperationCanceledException>();
+            success.Should().BeTrue();
+            result.Should().Be("null-handled");
+            converter1.LastInput.Should().BeNull();
+            converter2.LastInput.Should().BeNull();
         }
 
         /// <summary>

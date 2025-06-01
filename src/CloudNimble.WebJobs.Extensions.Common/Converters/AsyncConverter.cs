@@ -15,7 +15,14 @@ namespace CloudNimble.WebJobs.Extensions.Common.Converters
     /// <typeparam name="TOutput">The type to convert to.</typeparam>
     public class AsyncConverter<TInput, TOutput> : IAsyncConverter<TInput, TOutput>
     {
+
+        #region Fields
+
         private readonly IConverter<TInput, TOutput> _innerConverter;
+
+        #endregion
+
+        #region Constructors
 
         /// <summary>
         /// Creates a new instance.
@@ -27,15 +34,21 @@ namespace CloudNimble.WebJobs.Extensions.Common.Converters
             _innerConverter = innerConverter;
         }
 
+        #endregion
+
+        #region Public Methods
+
         /// <inheritdoc/>
         public Task<TOutput> ConvertAsync(TInput input, CancellationToken cancellationToken)
         {
-            if (cancellationToken.IsCancellationRequested)
-            {
-                return Task.FromCanceled<TOutput>(cancellationToken);
-            }
+            cancellationToken.ThrowIfCancellationRequested();
+            
             var result = _innerConverter.Convert(input);
             return Task.FromResult(result);
         }
+
+        #endregion
+
     }
+
 }

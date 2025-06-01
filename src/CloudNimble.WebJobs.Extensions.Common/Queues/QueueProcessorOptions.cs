@@ -13,6 +13,32 @@ namespace CloudNimble.WebJobs.Extensions.Common.Queues
     public class QueueProcessorOptions     
     {
 
+        #region Public Properties
+
+        /// <summary>
+        /// Gets the queue the <see cref="QueueProcessor"/> will operate on.
+        /// </summary>
+        public IQueueClient Queue { get; }
+
+        /// <summary>
+        /// Gets the queue to move messages to when unable to process a message after the maximum dequeue count has been exceeded. May be null.
+        /// </summary>
+        public IQueueClient PoisonQueue { get; }
+
+        /// <summary>
+        /// Gets the <see cref="ILogger"/>.
+        /// </summary>
+        public ILogger Logger { get; }
+
+        /// <summary>
+        /// Gets the queue configuration.
+        /// </summary>
+        public QueuesOptionsBase Options { get; }
+
+        #endregion
+
+        #region Constructors
+
         /// <summary>
         /// Constructs a new instance.
         /// </summary>
@@ -31,25 +57,7 @@ namespace CloudNimble.WebJobs.Extensions.Common.Queues
             Options = options.Clone();
         }
 
-        /// <summary>
-        /// Gets the queue the <see cref="QueueProcessor"/> will operate on.
-        /// </summary>
-        public IQueueClient Queue { get; private set; }
-
-        /// <summary>
-        /// Gets the queue to move messages to when unable to process a message after the maximum dequeue count has been exceeded. May be null.
-        /// </summary>
-        public IQueueClient PoisonQueue { get; private set; }
-
-        /// <summary>
-        /// Gets the <see cref="ILogger"/>.
-        /// </summary>
-        public ILogger Logger { get; private set; }
-
-        /// <summary>
-        /// Gets the queue configuration.
-        /// </summary>
-        public QueuesOptionsBase Options { get; private set; }
+        #endregion
 
     }
 

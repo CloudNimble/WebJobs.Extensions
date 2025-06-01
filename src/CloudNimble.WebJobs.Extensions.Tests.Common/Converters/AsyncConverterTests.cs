@@ -120,12 +120,9 @@ namespace CloudNimble.WebJobs.Extensions.Tests.Common.Converters
             using var cts = new CancellationTokenSource();
             cts.Cancel();
 
-            var task = asyncConverter.ConvertAsync("42", cts.Token);
+            var action = async () => await asyncConverter.ConvertAsync("42", cts.Token);
 
-            // The task should complete immediately since the sync converter doesn't check cancellation
-            // But the cancellation token is still passed through
-            var result = await task;
-            result.Should().Be(42);
+            await action.Should().ThrowAsync<OperationCanceledException>();
         }
 
         /// <summary>

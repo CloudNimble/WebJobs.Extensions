@@ -45,6 +45,8 @@ namespace CloudNimble.WebJobs.Extensions.Common.Converters
         {
             foreach (IAsyncObjectToTypeConverter<T> converter in _converters)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+                
                 try
                 {
                     var result = await converter.TryConvertAsync(value, cancellationToken).ConfigureAwait(false);

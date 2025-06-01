@@ -44,12 +44,6 @@ namespace CloudNimble.WebJobs.Extensions.Common.Converters
         /// <returns>True if the conversion was successful, false otherwise.</returns>
         public bool TryConvert(object input, out T output)
         {
-            if (input is null)
-            {
-                output = default;
-                return false;
-            }
-
             foreach (IObjectToTypeConverter<T> converter in _converters)
             {
                 try
