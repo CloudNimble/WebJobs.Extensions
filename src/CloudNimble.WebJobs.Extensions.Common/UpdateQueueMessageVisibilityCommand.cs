@@ -33,7 +33,7 @@ namespace CloudNimble.WebJobs.Extensions.Common
         /// <param name="speedupStrategy">The strategy to determine the delay before the next execution attempt.</param>
         /// <param name="onUpdateReceipt">The action to perform when the message update receipt is received.</param>
         public UpdateQueueMessageVisibilityCommand(IQueueClient queue, IQueueMessage message,
-            TimeSpan visibilityTimeout, IQueueRequestExceptionClassifier classifier, IDelayStrategy speedupStrategy, 
+            TimeSpan visibilityTimeout, IQueueRequestExceptionClassifier classifier, IDelayStrategy speedupStrategy,
             Action<IQueueMessage, QueueMessageUpdateReceipt> onUpdateReceipt)
         {
             Ensure.ArgumentNotNull(queue, nameof(queue));
@@ -59,10 +59,18 @@ namespace CloudNimble.WebJobs.Extensions.Common
 
             try
             {
+                // Check for cancellation before starting
+                cancellationToken.ThrowIfCancellationRequested();
+
                 var updateReceipt = await _queue.UpdateMessageAsync(_message.Id, _message.PopReceipt, _visibilityTimeout, cancellationToken).ConfigureAwait(false);
                 _onUpdateReceipt?.Invoke(_message, updateReceipt);
                 // The next execution should occur after a normal delay.
                 delay = _speedupStrategy.GetNextDelay(true);
+            }
+            catch (OperationCanceledException)
+            {
+                // Re-throw cancellation exceptions
+                throw;
             }
             catch (Exception ex)
             {
@@ -89,4 +97,5 @@ namespace CloudNimble.WebJobs.Extensions.Common
         }
 
     }
+
 }

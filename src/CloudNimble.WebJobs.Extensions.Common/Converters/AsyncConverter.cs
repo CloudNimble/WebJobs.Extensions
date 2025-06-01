@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 using Microsoft.Azure.WebJobs;
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -22,12 +23,17 @@ namespace CloudNimble.WebJobs.Extensions.Common.Converters
         /// <param name="innerConverter">The inner converter to delegate to.</param>
         public AsyncConverter(IConverter<TInput, TOutput> innerConverter)
         {
+            ArgumentNullException.ThrowIfNull(innerConverter);
             _innerConverter = innerConverter;
         }
 
         /// <inheritdoc/>
         public Task<TOutput> ConvertAsync(TInput input, CancellationToken cancellationToken)
         {
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return Task.FromCanceled<TOutput>(cancellationToken);
+            }
             var result = _innerConverter.Convert(input);
             return Task.FromResult(result);
         }

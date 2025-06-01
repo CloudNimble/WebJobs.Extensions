@@ -14,6 +14,7 @@ namespace CloudNimble.WebJobs.Extensions.Common.Converters
     /// <typeparam name="T">The type to convert to.</typeparam>
     public class CompositeAsyncObjectToTypeConverter<T> : IAsyncObjectToTypeConverter<T>
     {
+
         private readonly IEnumerable<IAsyncObjectToTypeConverter<T>> _converters;
 
         /// <summary>
@@ -44,11 +45,19 @@ namespace CloudNimble.WebJobs.Extensions.Common.Converters
         {
             foreach (IAsyncObjectToTypeConverter<T> converter in _converters)
             {
-                var result = await converter.TryConvertAsync(value, cancellationToken).ConfigureAwait(false);
-
-                if (result.Succeeded)
+                try
                 {
-                    return result;
+                    var result = await converter.TryConvertAsync(value, cancellationToken).ConfigureAwait(false);
+
+                    if (result.Succeeded)
+                    {
+                        return result;
+                    }
+                }
+                catch
+                {
+                    // Continue to next converter on any exception
+                    continue;
                 }
             }
 
@@ -58,5 +67,7 @@ namespace CloudNimble.WebJobs.Extensions.Common.Converters
                 Result = default
             };
         }
+
     }
+
 }

@@ -453,7 +453,8 @@ namespace CloudNimble.WebJobs.Extensions.Tests.Common.Converters
 
             if (typeof(TInput) == typeof(string) && typeof(TOutput) == typeof(string))
             {
-                return (TOutput)(object)$"converted_{input}";
+                var stringInput = input as string;
+                return (TOutput)(object)$"converted_{stringInput ?? "null"}";
             }
 
             if (typeof(TInput) == typeof(int) && typeof(TOutput) == typeof(double))

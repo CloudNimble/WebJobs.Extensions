@@ -13,6 +13,7 @@ namespace CloudNimble.WebJobs.Extensions.Common.Converters
     /// <typeparam name="T">The output <see cref="Type"/></typeparam>
     public class CompositeObjectToTypeConverter<T> : IObjectToTypeConverter<T>
     {
+
         private readonly IEnumerable<IObjectToTypeConverter<T>> _converters;
 
         /// <summary>
@@ -43,18 +44,33 @@ namespace CloudNimble.WebJobs.Extensions.Common.Converters
         /// <returns>True if the conversion was successful, false otherwise.</returns>
         public bool TryConvert(object input, out T output)
         {
+            if (input is null)
+            {
+                output = default;
+                return false;
+            }
+
             foreach (IObjectToTypeConverter<T> converter in _converters)
             {
-
-                if (converter.TryConvert(input, out T possibleConverted))
+                try
                 {
-                    output = possibleConverted;
-                    return true;
+                    if (converter.TryConvert(input, out T possibleConverted))
+                    {
+                        output = possibleConverted;
+                        return true;
+                    }
+                }
+                catch
+                {
+                    // Continue to next converter on any exception
+                    continue;
                 }
             }
 
             output = default;
             return false;
         }
+
     }
+
 }

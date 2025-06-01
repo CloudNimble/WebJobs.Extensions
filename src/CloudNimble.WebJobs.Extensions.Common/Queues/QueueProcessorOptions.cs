@@ -22,7 +22,10 @@ namespace CloudNimble.WebJobs.Extensions.Common.Queues
         /// <param name="poisonQueue">The queue to move messages to when unable to process a message after the maximum dequeue count has been exceeded. May be null.</param>
         internal QueueProcessorOptions(IQueueClient queue, ILoggerFactory loggerFactory, QueuesOptionsBase options, IQueueClient poisonQueue = null)
         {
-            Queue = queue ?? throw new ArgumentNullException(nameof(queue));
+            ArgumentNullException.ThrowIfNull(queue);
+            ArgumentNullException.ThrowIfNull(options);
+
+            Queue = queue;
             PoisonQueue = poisonQueue;
             Logger = loggerFactory?.CreateLogger<QueueProcessor>();
             Options = options.Clone();
