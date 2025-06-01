@@ -1,6 +1,7 @@
 ﻿// Copyright (c) CloudNimble, Inc. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using CloudNimble.WebJobs.Extensions.Common;
 using CloudNimble.WebJobs.Extensions.Common.Queues;
 using FluentAssertions;
 using Microsoft.Azure.WebJobs.Hosting;
@@ -8,7 +9,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Text.Json;
 
-namespace CloudNimble.WebJobs.Extensions.Common.Tests.Queues
+namespace CloudNimble.WebJobs.Extensions.Tests.Common.Queues
 {
 
     /// <summary>

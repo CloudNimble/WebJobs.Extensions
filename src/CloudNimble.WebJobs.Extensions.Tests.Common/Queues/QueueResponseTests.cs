@@ -2,13 +2,13 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using CloudNimble.WebJobs.Extensions.Common.Queues;
+using CloudNimble.WebJobs.Extensions.Tests.Common.Models;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace CloudNimble.WebJobs.Extensions.Common.Tests.Queues
+namespace CloudNimble.WebJobs.Extensions.Tests.Common.Queues
 {
 
     /// <summary>
@@ -379,18 +379,6 @@ namespace CloudNimble.WebJobs.Extensions.Common.Tests.Queues
     }
 
     #region Test Helper Classes
-
-    /// <summary>
-    /// Test implementation of IQueueMessage for testing purposes.
-    /// </summary>
-    internal class TestQueueMessage : IQueueMessage
-    {
-        public string Body { get; set; }
-        public int DequeueCount { get; set; }
-        public string Id { get; set; }
-        public string PopReceipt { get; set; }
-        public DateTimeOffset? DateInserted { get; set; }
-    }
 
     /// <summary>
     /// Custom test implementation that extends TestQueueMessage for inheritance testing.

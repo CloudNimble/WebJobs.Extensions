@@ -7,7 +7,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Linq;
 
-namespace CloudNimble.WebJobs.Extensions.Common.Tests.Queues
+namespace CloudNimble.WebJobs.Extensions.Tests.Common.Queues
 {
 
     /// <summary>

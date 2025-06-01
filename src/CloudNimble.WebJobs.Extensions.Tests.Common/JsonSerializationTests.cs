@@ -10,7 +10,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace CloudNimble.WebJobs.Extensions.Common.Tests.Configuration
+namespace CloudNimble.WebJobs.Extensions.Tests.Common
 {
 
     /// <summary>

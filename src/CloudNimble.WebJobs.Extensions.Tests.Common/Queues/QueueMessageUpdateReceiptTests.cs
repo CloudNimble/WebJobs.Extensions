@@ -6,7 +6,7 @@ using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 
-namespace CloudNimble.WebJobs.Extensions.Common.Tests.Queues
+namespace CloudNimble.WebJobs.Extensions.Tests.Common.Queues
 {
 
     /// <summary>
@@ -27,7 +27,7 @@ namespace CloudNimble.WebJobs.Extensions.Common.Tests.Queues
         {
             var receipt = new QueueMessageUpdateReceipt();
 
-            receipt.NextVisibleOn.Should().Be(default(DateTimeOffset));
+            receipt.NextVisibleOn.Should().Be(default);
             receipt.PopReceipt.Should().BeNull();
         }
 
