@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using CloudNimble.WebJobs.Extensions.Common.Timers;
-using Microsoft.Azure.WebJobs.Host.Timers;
 using System;
 using System.Runtime.ExceptionServices;
 using System.Threading;

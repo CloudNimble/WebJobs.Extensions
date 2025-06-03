@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using CloudNimble.WebJobs.Extensions.Amazon.SQS;
+using CloudNimble.WebJobs.Extensions.Amazon.SQS.Triggers;
 using CloudNimble.WebJobs.Extensions.Common.Queues;
 using CloudNimble.WebJobs.Extensions.Common.Triggers;
 using Microsoft.Azure.WebJobs;
@@ -49,7 +50,14 @@ namespace CloudNimble.WebJobs.Extensions.Amazon
         /// <returns></returns>
         public ITriggerDataArgumentBinding<IQueueMessage> TryCreate(ParameterInfo parameter)
         {
-            return parameter.ParameterType == typeof(T) ? new ConverterTriggerDataArgumentBinding<T>((IConverter<IQueueMessage, T>)_converter, _loggerFactory) : null;
+            if (parameter.ParameterType != typeof(T))
+            {
+                return null;
+            }
+
+            // Use the adapter to convert IConverter<SQSMessage, T> to IConverter<IQueueMessage, T>
+            var adaptedConverter = new QueueMessageConverterAdapter<T>(_converter);
+            return new ConverterTriggerDataArgumentBinding<T>(adaptedConverter, _loggerFactory);
         }
 
         #endregion

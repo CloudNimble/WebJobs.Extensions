@@ -102,7 +102,7 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Config
 
             return node;
         }
-        private static string NormalizeQueueName(SQSAttribute attribute, INameResolver nameResolver)
+        private string NormalizeQueueName(SQSAttribute attribute, INameResolver nameResolver)
         {
             string queueName = attribute.QueueName;
             if (nameResolver != null)
@@ -110,6 +110,13 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Config
                 queueName = nameResolver.ResolveWholeString(queueName);
             }
             queueName = queueName.ToLowerInvariant(); // must be lowercase. coerce here to be nice.
+            
+            // If UseFifo is enabled and queue name doesn't already end with .fifo, append it
+            if (_sqsOptions?.Value?.UseFifo == true && !queueName.EndsWith(".fifo"))
+            {
+                queueName += ".fifo";
+            }
+            
             return queueName;
         }
 
@@ -148,6 +155,13 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Config
             //var client = account.CreateCloudQueueClient();
 
             string queueName = attrResolved.QueueName.ToLowerInvariant();
+            
+            // If UseFifo is enabled and queue name doesn't already end with .fifo, append it
+            if (_sqsOptions.Value.UseFifo && !queueName.EndsWith(".fifo"))
+            {
+                queueName += ".fifo";
+            }
+            
             SQSQueue.ValidateQueueName(queueName);
 
             //return client.GetQueueReference(queueName);

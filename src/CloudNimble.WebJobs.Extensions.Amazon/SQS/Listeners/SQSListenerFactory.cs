@@ -254,7 +254,18 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Listeners
                 return null;
             }
 
-            string possiblePoisonQueueName = sourceQueue.Name + PoisonQueueSuffix;
+            string possiblePoisonQueueName;
+            
+            // For FIFO queues, insert "-poison" before the ".fifo" suffix
+            if (sourceQueue.IsFifoName)
+            {
+                var baseName = sourceQueue.Name[..^5]; // Remove ".fifo"
+                possiblePoisonQueueName = baseName + PoisonQueueSuffix + ".fifo";
+            }
+            else
+            {
+                possiblePoisonQueueName = sourceQueue.Name + PoisonQueueSuffix;
+            }
 
             if (!SQSQueue.IsValidQueueName(possiblePoisonQueueName, out string errorMessage))
             {

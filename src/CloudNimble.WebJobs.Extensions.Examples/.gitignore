@@ -1,0 +1,11 @@
+# User secrets
+appsettings.*.user.json
+secrets.json
+
+# Local environment files
+.env
+.env.local
+
+# AWS credentials (never commit these!)
+aws-credentials.json
+*.pem

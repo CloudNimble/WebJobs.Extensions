@@ -138,10 +138,13 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Triggers
 
             var queue = new SQSQueue(queueName, _sqsClient, _loggerFactory, _sqsOptions);
 
+            // Use the adapter to convert ITriggerDataArgumentBinding<IQueueMessage> to ITriggerDataArgumentBinding<SQSMessage>
+            var adaptedBinding = new SQSMessageArgumentBindingAdapter(argumentBinding);
+
             var binding = new SQSTriggerBinding(
                 parameter.Name,
                 queue,
-                (ITriggerDataArgumentBinding<SQSMessage>)argumentBinding,
+                adaptedBinding,
                 _queueOptions,
                 _exceptionHandler,
                 _messageEnqueuedWatcherSetter,
