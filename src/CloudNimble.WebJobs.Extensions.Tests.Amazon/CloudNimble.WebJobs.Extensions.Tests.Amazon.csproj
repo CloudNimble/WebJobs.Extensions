@@ -6,6 +6,16 @@
 
   <ItemGroup>
     <ProjectReference Include="..\CloudNimble.WebJobs.Extensions.Amazon\CloudNimble.WebJobs.Extensions.Amazon.csproj" />
+    <ProjectReference Include="..\CloudNimble.WebJobs.Extensions.Tests.Common\CloudNimble.WebJobs.Extensions.Tests.Common.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="appsettings.Integration.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="docker-compose.yml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>
