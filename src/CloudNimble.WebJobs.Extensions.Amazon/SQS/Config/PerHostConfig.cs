@@ -22,13 +22,14 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Config
     // Multiple JobHost objects may share the same JobHostConfiguration.
     // But queues have per-host instance state (IMessageEnqueuedWatcher). 
     // so capture that and create new binding rules per host instance. 
-    internal class PerHostConfig : IConverter<SQSAttribute, IAsyncCollector<SQSMessage>>
+    internal class PerHostConfig : IConverter<SQSAttribute, IAsyncCollector<SQSMessage>>,
+                                    IConverter<SQSOutputAttribute, IAsyncCollector<SQSMessage>>
     {
 
         #region Private Fields
 
         // Fields that the various binding funcs need to close over. 
-        private AmazonSQSClient _amazonSQSClient;
+        private IAmazonSQS _amazonSQSClient;
         private ILoggerFactory _loggerFactory;
         private IOptions<SQSOptions> _sqsOptions;
 
@@ -36,22 +37,25 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Config
         // This is per-host (not per-config)
         private IContextGetter<IMessageEnqueuedWatcher> _messageEnqueuedWatcherGetter;
         private QueueMessageCausalityManager _causalityManager;
+        private Microsoft.Azure.WebJobs.INameResolver _nameResolver;
 
         #endregion
 
         public void Initialize(
             ExtensionConfigContext context,
-            AmazonSQSClient amazonSQSClient,
+            IAmazonSQS amazonSQSClient,
             IContextGetter<IMessageEnqueuedWatcher> contextGetter,
             QueueMessageCausalityManager causalityManager,
             ILoggerFactory loggerFactory,
-            IOptions<SQSOptions> sqsOptions)
+            IOptions<SQSOptions> sqsOptions,
+            Microsoft.Azure.WebJobs.INameResolver nameResolver)
         {
             _amazonSQSClient = amazonSQSClient;
             _messageEnqueuedWatcherGetter = contextGetter;
             _causalityManager = causalityManager;
             _loggerFactory = loggerFactory;
             _sqsOptions = sqsOptions;
+            _nameResolver = nameResolver;
 
             // IStorageQueueMessage is the core testing interface 
             var binding = context.AddBindingRule<SQSAttribute>();
@@ -72,6 +76,15 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Config
 
             binding.BindToInput<SQSQueue>(builder);
 
+            // Configure SQSOutputAttribute bindings
+            var outputBinding = context.AddBindingRule<SQSOutputAttribute>();
+            outputBinding
+                .AddConverter<string, SQSMessage>(ConvertStringToSQSMessageForOutput)
+                .AddOpenConverter<OpenType.Poco, SQSMessage>(ConvertPocoToSQSMessageForOutput);
+
+            outputBinding.AddValidator(ValidateOutputQueueAttribute);
+            outputBinding.BindToCollector<SQSMessage>(this);
+
         }
 
         private async Task<object> ConvertPocoToSQSMessage(object arg, Attribute attrResolved, ValueBindingContext context)
@@ -82,10 +95,24 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Config
             return await Task.FromResult(msg);
         }
 
+        private async Task<object> ConvertPocoToSQSMessageForOutput(object arg, Attribute attrResolved, ValueBindingContext context)
+        {
+            var attr = (SQSOutputAttribute)attrResolved;
+            var jobj = SerializeToJsonObject(arg, attr, context);
+            var msg = ConvertJsonObjectToSQSMessageForOutput(jobj, attr);
+            return await Task.FromResult(msg);
+        }
+
         private SQSMessage ConvertJsonObjectToSQSMessage(JsonObject obj, SQSAttribute attrResolved)
         {
             var json = obj.ToString(); // convert to JSon
             return ConvertStringToSQSMessage(json, attrResolved);
+        }
+
+        private SQSMessage ConvertJsonObjectToSQSMessageForOutput(JsonObject obj, SQSOutputAttribute attrResolved)
+        {
+            var json = obj.ToString(); // convert to JSon
+            return ConvertStringToSQSMessageForOutput(json, attrResolved);
         }
 
         /// <summary>
@@ -102,34 +129,32 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Config
 
             return node;
         }
-        private string NormalizeQueueName(SQSAttribute attribute, INameResolver nameResolver)
-        {
-            string queueName = attribute.QueueName;
-            if (nameResolver != null)
-            {
-                queueName = nameResolver.ResolveWholeString(queueName);
-            }
-            queueName = queueName.ToLowerInvariant(); // must be lowercase. coerce here to be nice.
-            
-            // If UseFifo is enabled and queue name doesn't already end with .fifo, append it
-            if (_sqsOptions?.Value?.UseFifo == true && !queueName.EndsWith(".fifo"))
-            {
-                queueName += ".fifo";
-            }
-            
-            return queueName;
-        }
 
         // This is a static validation (so only %% are resolved; not {} ) 
         // For runtime validation, the regular builder functions can do the resolution.
         private void ValidateQueueAttribute(SQSAttribute attribute, Type parameterType)
         {
-            string queueName = NormalizeQueueName(attribute, null);
+            string queueName = attribute.QueueName;
 
             // Queue pre-existing behavior: if there are { }in the path, then defer validation until runtime. 
             if (!queueName.Contains('{'))
             {
-                SQSQueue.ValidateQueueName(queueName);
+                // Note: Queue name normalization will be handled automatically by INameResolver
+                // We validate the raw name here since normalization happens at runtime
+                SQSQueue.ValidateQueueName(queueName.ToLowerInvariant());
+            }
+        }
+
+        private void ValidateOutputQueueAttribute(SQSOutputAttribute attribute, Type parameterType)
+        {
+            string queueName = attribute.QueueName;
+
+            // Queue pre-existing behavior: if there are { }in the path, then defer validation until runtime. 
+            if (!queueName.Contains('{'))
+            {
+                // Note: Queue name normalization will be handled automatically by INameResolver
+                // We validate the raw name here since normalization happens at runtime
+                SQSQueue.ValidateQueueName(queueName.ToLowerInvariant());
             }
         }
 
@@ -143,29 +168,44 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Config
             return new SQSMessage(arg);
         }
 
+        private SQSMessage ConvertStringToSQSMessageForOutput(string arg, SQSOutputAttribute attrResolved)
+        {
+            return new SQSMessage(arg);
+        }
+
         public IAsyncCollector<SQSMessage> Convert(SQSAttribute attrResolved)
         {
             var queue = GetQueue(attrResolved);
             return new SQSMessageAsyncCollector(queue, _messageEnqueuedWatcherGetter.Value);
         }
 
+        public IAsyncCollector<SQSMessage> Convert(SQSOutputAttribute attrResolved)
+        {
+            var queue = GetOutputQueue(attrResolved);
+            return new SQSMessageAsyncCollector(queue, _messageEnqueuedWatcherGetter.Value);
+        }
+
         internal SQSQueue GetQueue(SQSAttribute attrResolved)
         {
-            //var account = _amazonSQSClient.ListQueuesAsync(attrResolved.Connection);
-            //var client = account.CreateCloudQueueClient();
-
-            string queueName = attrResolved.QueueName.ToLowerInvariant();
-            
-            // If UseFifo is enabled and queue name doesn't already end with .fifo, append it
-            if (_sqsOptions.Value.UseFifo && !queueName.EndsWith(".fifo"))
+            // Resolve the queue name using INameResolver if available
+            string queueName = attrResolved.QueueName;
+            if (_nameResolver != null && !string.IsNullOrEmpty(queueName))
             {
-                queueName += ".fifo";
+                queueName = _nameResolver.ResolveWholeString(queueName);
             }
-            
             SQSQueue.ValidateQueueName(queueName);
+            return new SQSQueue(queueName, _amazonSQSClient, _loggerFactory, _sqsOptions);
+        }
 
-            //return client.GetQueueReference(queueName);
-
+        internal SQSQueue GetOutputQueue(SQSOutputAttribute attrResolved)
+        {
+            // Resolve the queue name using INameResolver if available
+            string queueName = attrResolved.QueueName;
+            if (_nameResolver != null && !string.IsNullOrEmpty(queueName))
+            {
+                queueName = _nameResolver.ResolveWholeString(queueName);
+            }
+            SQSQueue.ValidateQueueName(queueName);
             return new SQSQueue(queueName, _amazonSQSClient, _loggerFactory, _sqsOptions);
         }
     }

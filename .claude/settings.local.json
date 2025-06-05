@@ -1,12 +1,15 @@
 {
   "permissions": {
     "allow": [
-      "Bash(dotnet test:*)",
+      "Bash(dotnet:*)",
       "Bash(find:*)",
-      "Bash(dotnet build:*)",
       "WebFetch(domain:github.com)",
       "WebFetch(domain:raw.githubusercontent.com)",
-      "Bash(dotnet restore:*)"
+      "Bash(rg:*)",
+      "Bash(timeout:*)",
+      "Bash(true)",
+      "Bash(DOTNET_ENVIRONMENT=Development dotnet run --verbosity diagnostic 2 >& 1)",
+      "Bash(ls:*)"
     ],
     "deny": []
   }

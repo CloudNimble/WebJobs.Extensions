@@ -2,7 +2,7 @@
 
 This example project demonstrates how to use the CloudNimble WebJobs Extensions for Amazon SQS with Azure WebJobs. It includes:
 
-- **Timer-triggered function** that publishes messages to an SQS queue on a schedule
+- **Timer-triggered function** that publishes messages to an SQS queue using the `SQSOutputAttribute` output binding
 - **SQS-triggered functions** that process messages from the queue
 - Configuration for connecting to real AWS SQS queues
 - Proper error handling and logging
@@ -77,13 +77,15 @@ The `MessagePublisherFunction` publishes a message to SQS every X seconds (confi
 ```csharp
 [FunctionName("PublishMessageToSQS")]
 public async Task PublishMessage(
-    [TimerTrigger("%SQS:MessagePublishInterval%")] TimerInfo timer,
+    [TimerTrigger("*/30 * * * * *")] TimerInfo timer,
+    [SQSOutput("%SQS:QueueName%")] IAsyncCollector<ExampleMessage> messageCollector,
     ILogger log)
 ```
 
-- Creates the queue if it doesn't exist
+- Uses the `SQSOutputAttribute` for declarative output binding
+- Automatically handles message serialization to JSON
+- The SQS extension creates the queue if it doesn't exist
 - Publishes structured JSON messages with metadata
-- Includes message attributes for filtering
 
 ### Message Processors (SQS Triggers)
 

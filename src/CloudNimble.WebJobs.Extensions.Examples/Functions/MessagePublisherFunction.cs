@@ -1,12 +1,10 @@
-using Amazon.SQS;
-using Amazon.SQS.Model;
+using CloudNimble.WebJobs.Extensions.Amazon.SQS;
 using CloudNimble.WebJobs.Extensions.Examples.Models;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
-using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace CloudNimble.WebJobs.Extensions.Examples.Functions
@@ -16,39 +14,20 @@ namespace CloudNimble.WebJobs.Extensions.Examples.Functions
     /// </summary>
     public class MessagePublisherFunction
     {
-        private readonly IAmazonSQS _sqsClient;
         private readonly IConfiguration _configuration;
         private readonly ILogger<MessagePublisherFunction> _logger;
-        private readonly string _queueName;
-        private readonly bool _useFifo;
-        private readonly string _messageGroupId;
-        private readonly bool _useContentBasedDeduplication;
-        private string _queueUrl;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="MessagePublisherFunction"/> class.
         /// </summary>
-        /// <param name="sqsClient">The Amazon SQS client for queue operations.</param>
         /// <param name="configuration">The application configuration.</param>
         /// <param name="logger">The logger instance for logging operations.</param>
         public MessagePublisherFunction(
-            IAmazonSQS sqsClient,
             IConfiguration configuration,
             ILogger<MessagePublisherFunction> logger)
         {
-            _sqsClient = sqsClient;
             _configuration = configuration;
             _logger = logger;
-            
-            var baseQueueName = _configuration["SQS:QueueName"] ?? "webjobs-example-queue";
-            _useFifo = _configuration.GetValue<bool>("SQS:UseFifo");
-            _messageGroupId = _configuration["SQS:MessageGroupId"] ?? "default";
-            _useContentBasedDeduplication = _configuration.GetValue<bool>("SQS:UseContentBasedDeduplication");
-            
-            // Append .fifo if UseFifo is true and queue name doesn't already end with .fifo
-            _queueName = _useFifo && !baseQueueName.EndsWith(".fifo") 
-                ? baseQueueName + ".fifo" 
-                : baseQueueName;
         }
 
         /// <summary>
@@ -59,16 +38,12 @@ namespace CloudNimble.WebJobs.Extensions.Examples.Functions
         [FunctionName("PublishMessageToSQS")]
         public async Task PublishMessage(
             [TimerTrigger("*/30 * * * * *")] TimerInfo timer,
+            [SQSOutput("%SQS:QueueName%")] IAsyncCollector<ExampleMessage> messageCollector,
             ILogger log)
         {
+            log.LogInformation("PublishMessage function started. Timer IsPastDue: {IsPastDue}", timer.IsPastDue);
             try
             {
-                // Ensure queue URL is cached
-                if (string.IsNullOrEmpty(_queueUrl))
-                {
-                    _queueUrl = await GetOrCreateQueueUrlAsync();
-                }
-
                 // Create example message
                 var message = new ExampleMessage
                 {
@@ -84,110 +59,27 @@ namespace CloudNimble.WebJobs.Extensions.Examples.Functions
                     }
                 };
 
-                // Serialize message
-                var messageBody = JsonSerializer.Serialize(message, new JsonSerializerOptions
-                {
-                    WriteIndented = true
-                });
-
-                // Send message to SQS
-                var sendRequest = new SendMessageRequest
-                {
-                    QueueUrl = _queueUrl,
-                    MessageBody = messageBody,
-                    MessageAttributes = new Dictionary<string, MessageAttributeValue>
-                    {
-                        {
-                            "MessageType",
-                            new MessageAttributeValue
-                            {
-                                DataType = "String",
-                                StringValue = message.MessageType
-                            }
-                        },
-                        {
-                            "Priority",
-                            new MessageAttributeValue
-                            {
-                                DataType = "Number",
-                                StringValue = message.Priority.ToString()
-                            }
-                        }
-                    }
-                };
-
-                // Add FIFO attributes if this is a FIFO queue
-                if (_useFifo)
-                {
-                    sendRequest.MessageGroupId = _messageGroupId;
-                    
-                    // Generate deduplication ID if content-based deduplication is not enabled
-                    if (!_useContentBasedDeduplication)
-                    {
-                        sendRequest.MessageDeduplicationId = Guid.NewGuid().ToString();
-                    }
-                }
-
-                var response = await _sqsClient.SendMessageAsync(sendRequest);
+                // Add message to the queue using the output binding
+                log.LogInformation("Adding message to SQS collector...");
+                await messageCollector.AddAsync(message);
+                log.LogInformation("Message added to SQS collector successfully");
 
                 log.LogInformation(
-                    "Successfully published message to SQS. MessageId: {MessageId}, Content: {Content}",
-                    response.MessageId,
+                    "Successfully published message to SQS. Content: {Content}",
                     message.Content);
 
                 // Log metrics
                 _logger.LogMetric("MessagesPublished", 1, new Dictionary<string, object>
                 {
-                    { "Queue", _queueName },
+                    { "Queue", _configuration["SQS:QueueName"] ?? "webjobs-example-queue" },
                     { "MessageType", message.MessageType },
                     { "Priority", message.Priority }
                 });
             }
             catch (Exception ex)
             {
-                log.LogError(ex, "Failed to publish message to SQS queue {QueueName}", _queueName);
+                log.LogError(ex, "Failed to publish message to SQS queue");
                 throw;
-            }
-        }
-
-        /// <summary>
-        /// Gets the queue URL, creating the queue if it doesn't exist.
-        /// </summary>
-        private async Task<string> GetOrCreateQueueUrlAsync()
-        {
-            try
-            {
-                // Try to get existing queue
-                var getQueueUrlResponse = await _sqsClient.GetQueueUrlAsync(_queueName);
-                _logger.LogInformation("Using existing SQS queue: {QueueUrl}", getQueueUrlResponse.QueueUrl);
-                return getQueueUrlResponse.QueueUrl;
-            }
-            catch (QueueDoesNotExistException)
-            {
-                // Create queue if it doesn't exist
-                _logger.LogInformation("Queue {QueueName} does not exist. Creating it...", _queueName);
-                
-                var createQueueRequest = new CreateQueueRequest
-                {
-                    QueueName = _queueName,
-                    Attributes = new Dictionary<string, string>
-                    {
-                        { "VisibilityTimeout", (_configuration.GetValue<int?>("SQS:VisibilityTimeout") ?? 30).ToString() },
-                        { "MessageRetentionPeriod", "86400" }, // 1 day
-                        { "ReceiveMessageWaitTimeSeconds", "20" } // Long polling
-                    }
-                };
-
-                // Add FIFO attributes if this is a FIFO queue
-                if (_useFifo)
-                {
-                    createQueueRequest.Attributes["FifoQueue"] = "true";
-                    createQueueRequest.Attributes["ContentBasedDeduplication"] = _useContentBasedDeduplication.ToString().ToLowerInvariant();
-                }
-
-                var createQueueResponse = await _sqsClient.CreateQueueAsync(createQueueRequest);
-                _logger.LogInformation("Created new SQS queue: {QueueUrl}", createQueueResponse.QueueUrl);
-                return createQueueResponse.QueueUrl;
             }
         }
     }

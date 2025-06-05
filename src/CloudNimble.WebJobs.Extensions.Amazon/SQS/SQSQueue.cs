@@ -356,7 +356,12 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS
             TimeSpan visibilityTimeout,
             CancellationToken token) where TQueueMessage : IQueueMessage
         {
-            var queueUrl = await GetQueueUrlAsync() ?? throw new InvalidOperationException($"Queue '{Name}' does not exist");
+            var queueUrl = await GetQueueUrlAsync();
+            if (queueUrl == null)
+            {
+                Logger.LogError("Queue '{QueueName}' does not exist. Attempting to get URL for queue failed.", Name);
+                throw new InvalidOperationException($"Queue '{Name}' does not exist");
+            }
             var request = new ReceiveMessageRequest
             {
                 QueueUrl = queueUrl,

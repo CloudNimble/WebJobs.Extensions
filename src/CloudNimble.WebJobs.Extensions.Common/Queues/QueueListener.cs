@@ -272,7 +272,7 @@ namespace CloudNimble.WebJobs.Extensions.Common.Queues
                         _queueExists = await _queue.ExistsAsync(cancellationToken).ConfigureAwait(false);
                     }
 
-                    if (_queueExists.Value)
+                    if (_queueExists is true)
                     {
                         int numMessagesToReceive = GetMessageReceiveCount();
                         if (numMessagesToReceive == 0)

@@ -109,7 +109,7 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Triggers
         /// <summary>
         /// Gets the type of the trigger value.
         /// </summary>
-        public Type TriggerValueType => typeof(Message);
+        public Type TriggerValueType => typeof(SQSMessage);
 
         /// <summary>
         /// Gets the binding data contract that defines the available binding data for this trigger.
@@ -175,7 +175,7 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Triggers
         {
             if (!_converter.TryConvert(value, out SQSMessage message))
             {
-                throw new InvalidOperationException("Unable to convert trigger to IStorageQueueMessage.");
+                throw new InvalidOperationException($"Unable to convert trigger value of type '{value?.GetType().Name ?? "null"}' to SQSMessage.");
             }
 
             var triggerData = await _argumentBinding.BindAsync(message, context).ConfigureAwait(false);

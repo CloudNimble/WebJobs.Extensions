@@ -91,7 +91,8 @@ namespace Microsoft.Azure.WebJobs
             });
 
             // Register AWS SQS Client with enhanced configuration support
-            builder.Services.TryAddSingleton<IAmazonSQS>(serviceProvider =>
+            // Register both as interface and concrete type for DI compatibility
+            builder.Services.TryAddSingleton<AmazonSQSClient>(serviceProvider =>
             {
                 var configuration = serviceProvider.GetService<IConfiguration>();
                 var sqsOptions = serviceProvider.GetService<IOptions<SQSOptions>>()?.Value;
@@ -120,6 +121,10 @@ namespace Microsoft.Azure.WebJobs
 
                 return new AmazonSQSClient(config);
             });
+            
+            // Also register the interface pointing to the same instance
+            builder.Services.TryAddSingleton<IAmazonSQS>(serviceProvider =>
+                serviceProvider.GetRequiredService<AmazonSQSClient>());
 
             // Register shared queue watcher for cross-queue notifications
             builder.Services.TryAddSingleton<SharedQueueWatcher>();
@@ -132,6 +137,10 @@ namespace Microsoft.Azure.WebJobs
                 new ContextAccessor<IMessageEnqueuedWatcher>());
             builder.Services.TryAddSingleton(p =>
                 p.GetService<IContextSetter<IMessageEnqueuedWatcher>>() as IContextGetter<IMessageEnqueuedWatcher>);
+
+            // Register SQS name resolver as INameResolver
+            // This will be used by the framework to normalize queue names through [AutoResolve] attributes
+            builder.Services.TryAddSingleton<INameResolver, SQSNameResolver>();
 
             // Register SQS-specific services
             builder.Services.TryAddSingleton(serviceProvider =>

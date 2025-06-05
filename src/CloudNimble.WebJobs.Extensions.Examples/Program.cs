@@ -136,7 +136,9 @@ namespace CloudNimble.WebJobs.Extensions.Examples
                 }
                 else
                 {
-                    throw new InvalidOperationException($"AWS profile '{profile}' not found.");
+                    // Profile not found, fall back to default credential chain
+                    Console.WriteLine($"AWS profile '{profile}' not found, falling back to default credential chain.");
+                    credentials = FallbackCredentialsFactory.GetCredentials();
                 }
             }
             else

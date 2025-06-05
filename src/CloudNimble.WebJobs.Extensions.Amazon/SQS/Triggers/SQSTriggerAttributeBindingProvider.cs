@@ -130,8 +130,19 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Triggers
                 return Task.FromResult<ITriggerBinding>(null);
             }
 
-            var queueName = Resolve(queueTrigger.QueueName);
-            queueName = NormalizeAndValidate(queueName);
+            // Resolve the queue name using INameResolver if available
+            var queueName = queueTrigger.QueueName;
+            
+            // Log the original queue name and name resolver status
+            var logger = _loggerFactory.CreateLogger<SQSTriggerAttributeBindingProvider>();
+            logger.LogInformation("SQSTrigger - Original queue name: {OriginalName}, NameResolver available: {HasResolver}", 
+                queueTrigger.QueueName, _nameResolver != null);
+            
+            if (_nameResolver != null && !string.IsNullOrEmpty(queueName))
+            {
+                queueName = _nameResolver.ResolveWholeString(queueName);
+                logger.LogInformation("SQSTrigger - Resolved queue name: {ResolvedName}", queueName);
+            }
 
             var argumentBinding = _innerProvider.TryCreate(parameter)
                 ?? throw new InvalidOperationException($"Can't bind QueueTrigger to type '{parameter.ParameterType}'.");
@@ -161,37 +172,6 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Triggers
 
         #endregion
 
-        #region Private Methods
-
-        /// <summary>
-        /// Normalizes and validates the queue name according to SQS requirements.
-        /// </summary>
-        /// <param name="queueName">The queue name to normalize and validate.</param>
-        /// <returns>The normalized and validated queue name.</returns>
-        private static string NormalizeAndValidate(string queueName)
-        {
-            queueName = queueName.ToLowerInvariant();
-            SQSQueue.ValidateQueueName(queueName);
-
-            return queueName;
-        }
-
-        /// <summary>
-        /// Resolves the queue name using the configured name resolver.
-        /// </summary>
-        /// <param name="queueName">The queue name to resolve.</param>
-        /// <returns>The resolved queue name.</returns>
-        private string Resolve(string queueName)
-        {
-            if (_nameResolver is null)
-            {
-                return queueName;
-            }
-
-            return _nameResolver.ResolveWholeString(queueName);
-        }
-
-        #endregion
 
     }
 

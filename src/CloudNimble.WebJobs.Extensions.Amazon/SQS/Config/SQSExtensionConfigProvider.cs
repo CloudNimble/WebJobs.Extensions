@@ -6,6 +6,7 @@ using CloudNimble.EasyAF.Core;
 using CloudNimble.WebJobs.Extensions.Amazon.SQS.Triggers;
 using CloudNimble.WebJobs.Extensions.Common;
 using CloudNimble.WebJobs.Extensions.Common.Queues;
+using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Description;
 using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Extensions.Logging;
@@ -26,11 +27,12 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Config
         #region Private Members
 
         private readonly IContextGetter<IMessageEnqueuedWatcher> _contextGetter;
-        private readonly AmazonSQSClient _amazonSQSClient;
+        private readonly IAmazonSQS _amazonSQSClient;
         private readonly SQSTriggerAttributeBindingProvider _triggerProvider;
         private readonly QueueMessageCausalityManager _causalityManager;
         private readonly ILoggerFactory _loggerFactory;
         private readonly IOptions<SQSOptions> _sqsOptions;
+        private readonly INameResolver _nameResolver;
 
         #endregion
 
@@ -45,14 +47,16 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Config
         /// <param name="causalityManager">The causality manager for tracking message relationships.</param>
         /// <param name="loggerFactory">The logger factory for creating loggers.</param>
         /// <param name="sqsOptions">The SQS-specific configuration options.</param>
+        /// <param name="nameResolver">The name resolver for resolving configuration placeholders.</param>
         /// <exception cref="ArgumentNullException">Thrown when any required parameter is null.</exception>
         public SQSExtensionConfigProvider(
-            AmazonSQSClient amazonSQSClient,
+            IAmazonSQS amazonSQSClient,
             IContextGetter<IMessageEnqueuedWatcher> contextGetter,
             SQSTriggerAttributeBindingProvider triggerProvider,
             QueueMessageCausalityManager causalityManager,
             ILoggerFactory loggerFactory,
-            IOptions<SQSOptions> sqsOptions)
+            IOptions<SQSOptions> sqsOptions,
+            INameResolver nameResolver = null)
         {
             _contextGetter = contextGetter;
             _amazonSQSClient = amazonSQSClient;
@@ -60,6 +64,7 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Config
             _causalityManager = causalityManager;
             _loggerFactory = loggerFactory;
             _sqsOptions = sqsOptions;
+            _nameResolver = nameResolver;
         }
 
         #endregion
@@ -86,7 +91,7 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS.Config
 
             // Initialize per-host configuration for queue operations and message conversion
             var config = new PerHostConfig();
-            config.Initialize(context, _amazonSQSClient, _contextGetter, _causalityManager, _loggerFactory, _sqsOptions);
+            config.Initialize(context, _amazonSQSClient, _contextGetter, _causalityManager, _loggerFactory, _sqsOptions, _nameResolver);
         }
 
         #endregion
