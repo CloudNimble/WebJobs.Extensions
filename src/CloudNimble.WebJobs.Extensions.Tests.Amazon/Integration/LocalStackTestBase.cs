@@ -74,6 +74,15 @@ namespace CloudNimble.WebJobs.Extensions.Tests.Amazon.Integration
         {
             base.TestSetup();
             InitializeSqsClient();
+            
+            // Wait for LocalStack to be ready with retry logic
+            var isReady = LocalStackHealthCheck.WaitForHealthyAsync(LocalStackEndpoint, 
+                maxWaitTime: TimeSpan.FromSeconds(30)).GetAwaiter().GetResult();
+                
+            if (!isReady)
+            {
+                throw new InvalidOperationException($"LocalStack is not ready at {LocalStackEndpoint}. Please ensure it is running.");
+            }
         }
 
         [TestCleanup]
@@ -137,20 +146,26 @@ namespace CloudNimble.WebJobs.Extensions.Tests.Amazon.Integration
                 queueName += ".fifo";
             }
 
-            var request = new CreateQueueRequest
+            // Create queue with retry logic for transient failures
+            return await RetryHelper.ExecuteWithRetryAsync(async () =>
             {
-                QueueName = queueName,
-                Attributes = new Dictionary<string, string>()
-            };
+                var request = new CreateQueueRequest
+                {
+                    QueueName = queueName,
+                    Attributes = new Dictionary<string, string>()
+                };
 
-            if (isFifo)
-            {
-                request.Attributes["FifoQueue"] = "true";
-                request.Attributes["ContentBasedDeduplication"] = "false";
-            }
+                if (isFifo)
+                {
+                    request.Attributes["FifoQueue"] = "true";
+                    request.Attributes["ContentBasedDeduplication"] = "false";
+                }
 
-            var response = await SqsClient.CreateQueueAsync(request);
-            return response.QueueUrl;
+                var response = await SqsClient.CreateQueueAsync(request);
+                return response.QueueUrl;
+            }, 
+            maxAttempts: 3,
+            delay: TimeSpan.FromSeconds(1));
         }
 
         /// <summary>
@@ -238,10 +253,22 @@ namespace CloudNimble.WebJobs.Extensions.Tests.Amazon.Integration
         /// <returns>True if LocalStack is available; otherwise, false.</returns>
         protected async Task<bool> IsLocalStackAvailableAsync()
         {
+            // First check HTTP health endpoint
+            if (!await LocalStackHealthCheck.IsHealthyAsync(LocalStackEndpoint))
+            {
+                return false;
+            }
+            
+            // Then verify SQS service is responding
             try
             {
-                // Try to list queues as a health check
-                await SqsClient.ListQueuesAsync(new ListQueuesRequest());
+                await RetryHelper.ExecuteWithRetryAsync(async () =>
+                {
+                    await SqsClient.ListQueuesAsync(new ListQueuesRequest());
+                }, 
+                maxAttempts: 3,
+                delay: TimeSpan.FromMilliseconds(500));
+                
                 return true;
             }
             catch
@@ -257,7 +284,26 @@ namespace CloudNimble.WebJobs.Extensions.Tests.Amazon.Integration
         {
             if (!await IsLocalStackAvailableAsync())
             {
-                Assert.Inconclusive("LocalStack is not available. Please ensure LocalStack is running on " + LocalStackEndpoint);
+                var message = $"""
+                    LocalStack is not available at {LocalStackEndpoint}
+
+                    To run integration tests, you need LocalStack running. Here's how:
+
+                    1. Quick Start (if you have LocalStack installed):
+                       ./setup-localstack.sh
+
+                    2. Install and start LocalStack:
+                       - macOS/Linux: brew install localstack/tap/localstack-cli && localstack start -d
+                       - Docker: docker run -d --name localstack -p 4566:4566 localstack/localstack
+
+                    3. Or use the provided setup script:
+                       cd src/CloudNimble.WebJobs.Extensions.Tests.Amazon/Integration
+                       ./setup-localstack.sh
+
+                    For more details, see Integration/LocalStack.md
+                    """;
+
+                Assert.Inconclusive(message);
             }
         }
 
