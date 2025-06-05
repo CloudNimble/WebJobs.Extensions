@@ -1,5 +1,8 @@
 ﻿using Amazon;
+using Amazon.Runtime;
+using Amazon.Runtime.CredentialManagement;
 using Amazon.SQS;
+using CloudNimble.WebJobs.Extensions.Amazon;
 using CloudNimble.WebJobs.Extensions.Amazon.SQS;
 using CloudNimble.WebJobs.Extensions.Amazon.SQS.Config;
 using CloudNimble.WebJobs.Extensions.Amazon.SQS.Listeners;
@@ -96,10 +99,11 @@ namespace Microsoft.Azure.WebJobs
             {
                 var configuration = serviceProvider.GetService<IConfiguration>();
                 var sqsOptions = serviceProvider.GetService<IOptions<SQSOptions>>()?.Value;
+                var logger = serviceProvider.GetService<ILogger<AmazonSQSClient>>();
                 var config = new AmazonSQSConfig();
 
                 // Prioritize SQSOptions settings, fall back to configuration, then defaults
-                var serviceUrl = sqsOptions?.ServiceUrl ?? configuration?.GetValue<string>("AWS:SQS:ServiceURL");
+                var serviceUrl = sqsOptions?.ServiceUrl ?? configuration?.GetValue<string>(AmazonConstants.SqsServiceUrlKey);
                 if (!string.IsNullOrWhiteSpace(serviceUrl))
                 {
                     config.ServiceURL = serviceUrl;
@@ -107,18 +111,32 @@ namespace Microsoft.Azure.WebJobs
                 }
 
                 // Configure region from options or configuration
-                var region = sqsOptions?.Region ?? configuration?.GetValue<string>("AWS:Region");
+                var region = sqsOptions?.Region ?? configuration?.GetValue<string>(AmazonConstants.AwsRegionKey);
                 if (!string.IsNullOrWhiteSpace(region))
                 {
                     config.RegionEndpoint = RegionEndpoint.GetBySystemName(region);
                 }
 
-                // Create client with explicit credentials if provided
-                if (!string.IsNullOrWhiteSpace(sqsOptions?.AccessKey) && !string.IsNullOrWhiteSpace(sqsOptions?.SecretKey))
+                // Check if a specific profile was requested
+                if (!string.IsNullOrWhiteSpace(sqsOptions?.Profile))
                 {
-                    return new AmazonSQSClient(sqsOptions.AccessKey, sqsOptions.SecretKey, config);
+                    logger?.LogInformation("Using AWS credential profile: {Profile}", sqsOptions.Profile);
+                    var chain = new CredentialProfileStoreChain();
+                    if (chain.TryGetAWSCredentials(sqsOptions.Profile, out var credentials))
+                    {
+                        return new AmazonSQSClient(credentials, config);
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException($"Unable to find AWS credentials for profile '{sqsOptions.Profile}'. " +
+                            "Please ensure the profile exists in your AWS credentials file or use the AWS CLI to configure it: aws configure --profile " + sqsOptions.Profile);
+                    }
                 }
 
+                // Use the default credential provider chain
+                // This will check in order: Environment Variables, AWS Credentials File, Assume Role Profiles, 
+                // EC2 Instance Profile, ECS Task Credentials, etc.
+                logger?.LogDebug("Using AWS default credential provider chain");
                 return new AmazonSQSClient(config);
             });
             

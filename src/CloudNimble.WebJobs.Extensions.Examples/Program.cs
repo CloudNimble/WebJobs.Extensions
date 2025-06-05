@@ -2,6 +2,7 @@
 using Amazon.Runtime;
 using Amazon.Runtime.CredentialManagement;
 using Amazon.SQS;
+using CloudNimble.WebJobs.Extensions.Amazon;
 using CloudNimble.WebJobs.Extensions.Amazon.SQS;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Extensions.Configuration;
@@ -80,7 +81,7 @@ namespace CloudNimble.WebJobs.Extensions.Examples
                     // Configure SQS options
                     services.Configure<SQSOptions>(options =>
                     {
-                        var sqsConfig = configuration.GetSection("SQS");
+                        var sqsConfig = configuration.GetSection(AmazonConstants.SqsConfigSection);
                         sqsConfig.Bind(options);
                     });
 
@@ -111,22 +112,14 @@ namespace CloudNimble.WebJobs.Extensions.Examples
         private static void ConfigureAwsServices(IServiceCollection services, IConfiguration configuration)
         {
             // Get AWS configuration
-            var awsConfig = configuration.GetSection("AWS");
-            var region = awsConfig["Region"] ?? "us-east-1";
-            var profile = awsConfig["Profile"];
+            var awsConfig = configuration.GetSection(AmazonConstants.AwsConfigSection);
+            var region = awsConfig[AmazonConstants.RegionKey] ?? AmazonConstants.DefaultAwsRegion;
+            var profile = awsConfig[AmazonConstants.ProfileKey];
 
-            // Create AWS credentials
+            // Use AWS credential provider chain
             AWSCredentials credentials;
             
-            // Check for explicit credentials in environment or config
-            var accessKey = Environment.GetEnvironmentVariable("AWS_ACCESS_KEY_ID") ?? awsConfig["AccessKey"];
-            var secretKey = Environment.GetEnvironmentVariable("AWS_SECRET_ACCESS_KEY") ?? awsConfig["SecretKey"];
-            
-            if (!string.IsNullOrEmpty(accessKey) && !string.IsNullOrEmpty(secretKey))
-            {
-                credentials = new BasicAWSCredentials(accessKey, secretKey);
-            }
-            else if (!string.IsNullOrEmpty(profile))
+            if (!string.IsNullOrEmpty(profile))
             {
                 // Use AWS profile with modern credential management
                 var chain = new CredentialProfileStoreChain();
@@ -143,7 +136,7 @@ namespace CloudNimble.WebJobs.Extensions.Examples
             }
             else
             {
-                // Use default credential chain (IAM role, etc.)
+                // Use default credential chain (environment variables, IAM role, etc.)
                 credentials = FallbackCredentialsFactory.GetCredentials();
             }
 
@@ -156,7 +149,7 @@ namespace CloudNimble.WebJobs.Extensions.Examples
                 };
 
                 // Override service URL if specified (e.g., for LocalStack)
-                var serviceUrl = configuration["SQS:ServiceUrl"];
+                var serviceUrl = configuration[AmazonConstants.SqsServiceUrlKey];
                 if (!string.IsNullOrEmpty(serviceUrl))
                 {
                     sqsConfig.ServiceURL = serviceUrl;

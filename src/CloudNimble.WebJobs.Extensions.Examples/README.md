@@ -18,16 +18,11 @@ This example project demonstrates how to use the CloudNimble WebJobs Extensions 
 
 ### 1. Configure AWS Credentials
 
-Choose one of these methods:
+**🔒 Security Note:** This extension uses the AWS SDK credential provider chain for secure credential management. Never store credentials in configuration files!
 
-#### Option A: Environment Variables
-```bash
-export AWS_ACCESS_KEY_ID=your-access-key
-export AWS_SECRET_ACCESS_KEY=your-secret-key
-export AWS_DEFAULT_REGION=us-east-1
-```
+Choose one of these **secure** methods:
 
-#### Option B: AWS Profile
+#### Option A: AWS Profile (Recommended)
 ```bash
 aws configure --profile webjobs-example
 ```
@@ -36,16 +31,29 @@ Then set the profile in `appsettings.json`:
 ```json
 {
   "AWS": {
-    "Profile": "webjobs-example"
+    "Profile": "webjobs-example",
+    "Region": "us-east-1"
   }
 }
 ```
 
-#### Option C: User Secrets (Development)
+#### Option B: Environment Variables
 ```bash
-dotnet user-secrets set "AWS:AccessKey" "your-access-key"
-dotnet user-secrets set "AWS:SecretKey" "your-secret-key"
+export AWS_ACCESS_KEY_ID=your-access-key
+export AWS_SECRET_ACCESS_KEY=your-secret-key
+export AWS_DEFAULT_REGION=us-east-1
 ```
+
+#### Option C: IAM Roles (Production)
+When running on EC2, ECS, or Lambda, the extension automatically uses IAM roles - no configuration needed!
+
+#### Option D: Default Credential Chain
+The extension automatically detects credentials from:
+1. Environment variables
+2. AWS credentials file (`~/.aws/credentials`)
+3. IAM instance profiles (EC2)
+4. ECS task credentials
+5. Lambda environment
 
 ### 2. Configure SQS Queue
 
@@ -160,10 +168,16 @@ To test with LocalStack instead of real AWS:
    }
    ```
 
-3. Use test credentials:
+3. Set environment variables for LocalStack:
    ```bash
    export AWS_ACCESS_KEY_ID=test
    export AWS_SECRET_ACCESS_KEY=test
+   export AWS_DEFAULT_REGION=us-east-1
+   ```
+
+   Or use the provided LocalStack configuration:
+   ```bash
+   dotnet run --environment LocalStack
    ```
 
 ## Monitoring

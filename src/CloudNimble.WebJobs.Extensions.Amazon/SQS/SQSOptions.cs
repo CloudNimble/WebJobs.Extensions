@@ -13,7 +13,7 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS
 
     /// <summary>
     /// Provides configuration options specific to Amazon SQS queue processing.
-    /// Extends the base queue options with SQS-specific settings for authentication, regions, and FIFO queues.
+    /// Extends the base queue options with SQS-specific settings for regions, profiles, and FIFO queues.
     /// </summary>
     public class SQSOptions : QueuesOptionsBase, IOptionsFormatter
     {
@@ -27,19 +27,20 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS
         #region Public Properties
 
         /// <summary>
-        /// Gets or sets the AWS access key ID for authentication.
-        /// If not specified, the AWS SDK will use default credential resolution.
+        /// Gets or sets the AWS credential profile name to use.
+        /// If not specified, the AWS SDK will use the default credential provider chain.
         /// </summary>
         /// <remarks>
         /// This property is optional. If not set, the AWS SDK will attempt to resolve credentials
         /// from environment variables, IAM roles, or other configured credential sources.
+        /// When specified, it will use the named profile from the AWS credentials file.
         /// </remarks>
         /// <example>
         /// <code>
-        /// options.AccessKey = "AKIAIOSFODNN7EXAMPLE";
+        /// options.Profile = "my-dev-profile";
         /// </code>
         /// </example>
-        public string AccessKey { get; set; }
+        public string Profile { get; set; }
 
         /// <summary>
         /// Gets or sets the AWS region for SQS operations.
@@ -56,21 +57,6 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS
         /// </example>
         public string Region { get; set; }
 
-        /// <summary>
-        /// Gets or sets the AWS secret access key for authentication.
-        /// If not specified, the AWS SDK will use default credential resolution.
-        /// </summary>
-        /// <remarks>
-        /// This property is optional and should be used in conjunction with <see cref="AccessKey"/>.
-        /// For security reasons, consider using IAM roles or environment variables instead of
-        /// hardcoding credentials in your application.
-        /// </remarks>
-        /// <example>
-        /// <code>
-        /// options.SecretKey = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY";
-        /// </code>
-        /// </example>
-        public string SecretKey { get; set; }
 
         /// <summary>
         /// Gets or sets the custom service URL for SQS operations.
@@ -185,9 +171,8 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS
                 MessageEncoding = this.MessageEncoding,
 
                 // Copy SQS-specific properties
-                AccessKey = this.AccessKey,
+                Profile = this.Profile,
                 Region = this.Region,
-                SecretKey = this.SecretKey,
                 ServiceUrl = this.ServiceUrl,
                 UseFifo = this.UseFifo,
                 MessageGroupId = this.MessageGroupId,
@@ -210,21 +195,20 @@ namespace CloudNimble.WebJobs.Extensions.Amazon.SQS
             var options = new
             {
                 // Base properties
-                BatchSize = this.BatchSize,
-                NewBatchThreshold = this.NewBatchThreshold,
-                MaxPollingInterval = this.MaxPollingInterval,
-                MaxDequeueCount = this.MaxDequeueCount,
-                VisibilityTimeout = this.VisibilityTimeout,
+                this.BatchSize,
+                this.NewBatchThreshold,
+                this.MaxPollingInterval,
+                this.MaxDequeueCount,
+                this.VisibilityTimeout,
                 MessageEncoding = this.MessageEncoding.ToString(),
 
-                // SQS-specific properties (with sensitive data masked)
-                AccessKey = string.IsNullOrWhiteSpace(this.AccessKey) ? null : "***MASKED***",
-                Region = this.Region,
-                SecretKey = string.IsNullOrWhiteSpace(this.SecretKey) ? null : "***MASKED***",
-                ServiceUrl = this.ServiceUrl,
-                UseFifo = this.UseFifo,
-                MessageGroupId = this.MessageGroupId,
-                UseContentBasedDeduplication = this.UseContentBasedDeduplication
+                // SQS-specific properties
+                this.Profile,
+                this.Region,
+                this.ServiceUrl,
+                this.UseFifo,
+                this.MessageGroupId,
+                this.UseContentBasedDeduplication
             };
 
             return JsonSerializer.Serialize(options, JsonSerialization.Options);

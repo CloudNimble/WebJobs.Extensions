@@ -129,8 +129,6 @@ namespace CloudNimble.WebJobs.Extensions.Tests.Amazon.Integration
             // Assert - Verify configuration
             LocalStackEndpoint.Should().NotBeNullOrEmpty();
             AwsRegion.Should().NotBeNullOrEmpty();
-            AwsAccessKey.Should().NotBeNullOrEmpty();
-            AwsSecretKey.Should().NotBeNullOrEmpty();
             
             // Common LocalStack endpoints
             LocalStackEndpoint.Should().MatchRegex(@"^https?://[^/]+:\d+/?$");

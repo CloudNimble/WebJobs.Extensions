@@ -5,6 +5,7 @@ using Amazon;
 using Amazon.Runtime;
 using Amazon.SQS;
 using Amazon.SQS.Model;
+using CloudNimble.WebJobs.Extensions.Amazon;
 using CloudNimble.WebJobs.Extensions.Tests.Common;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -30,30 +31,17 @@ namespace CloudNimble.WebJobs.Extensions.Tests.Amazon.Integration
         /// Gets the LocalStack endpoint URL. Defaults to http://localhost:4566.
         /// </summary>
         protected virtual string LocalStackEndpoint => 
-            Environment.GetEnvironmentVariable("LOCALSTACK_ENDPOINT") ?? 
-            Environment.GetEnvironmentVariable("SQS_ENDPOINT_URL") ?? 
-            "http://localhost:4566";
+            Environment.GetEnvironmentVariable(LocalStackConstants.LocalStackEndpointEnvVar) ?? 
+            Environment.GetEnvironmentVariable(LocalStackConstants.SqsEndpointUrlEnvVar) ?? 
+            LocalStackConstants.DefaultLocalStackEndpoint;
 
         /// <summary>
         /// Gets the AWS region to use for tests. Defaults to us-east-1.
         /// </summary>
         protected virtual string AwsRegion => 
-            Environment.GetEnvironmentVariable("AWS_DEFAULT_REGION") ?? 
-            "us-east-1";
+            Environment.GetEnvironmentVariable(AmazonConstants.AwsDefaultRegionEnvVar) ?? 
+            AmazonConstants.DefaultAwsRegion;
 
-        /// <summary>
-        /// Gets the AWS access key for LocalStack. Any value works with LocalStack.
-        /// </summary>
-        protected virtual string AwsAccessKey => 
-            Environment.GetEnvironmentVariable("AWS_ACCESS_KEY_ID") ?? 
-            "test";
-
-        /// <summary>
-        /// Gets the AWS secret key for LocalStack. Any value works with LocalStack.
-        /// </summary>
-        protected virtual string AwsSecretKey => 
-            Environment.GetEnvironmentVariable("AWS_SECRET_ACCESS_KEY") ?? 
-            "test";
 
         /// <summary>
         /// Gets the SQS client configured for LocalStack.
@@ -117,7 +105,11 @@ namespace CloudNimble.WebJobs.Extensions.Tests.Amazon.Integration
                         AuthenticationRegion = AwsRegion
                     };
 
-                    var credentials = new BasicAWSCredentials(AwsAccessKey, AwsSecretKey);
+                    // For LocalStack, we can use any credentials since authentication is bypassed
+                    var credentials = new BasicAWSCredentials(
+                        Environment.GetEnvironmentVariable(AmazonConstants.AwsAccessKeyIdEnvVar) ?? LocalStackConstants.DefaultTestAccessKey,
+                        Environment.GetEnvironmentVariable(AmazonConstants.AwsSecretAccessKeyEnvVar) ?? LocalStackConstants.DefaultTestSecretKey
+                    );
                     return new AmazonSQSClient(credentials, config);
                 });
 
@@ -126,8 +118,6 @@ namespace CloudNimble.WebJobs.Extensions.Tests.Amazon.Integration
                 {
                     options.ServiceUrl = LocalStackEndpoint;
                     options.Region = AwsRegion;
-                    options.AccessKey = AwsAccessKey;
-                    options.SecretKey = AwsSecretKey;
                 });
             });
         }
@@ -321,7 +311,11 @@ namespace CloudNimble.WebJobs.Extensions.Tests.Amazon.Integration
                 AuthenticationRegion = AwsRegion
             };
 
-            var credentials = new BasicAWSCredentials(AwsAccessKey, AwsSecretKey);
+            // For LocalStack, we can use any credentials since authentication is bypassed
+            var credentials = new BasicAWSCredentials(
+                Environment.GetEnvironmentVariable(AmazonConstants.AwsAccessKeyIdEnvVar) ?? LocalStackConstants.DefaultTestAccessKey,
+                Environment.GetEnvironmentVariable(AmazonConstants.AwsSecretAccessKeyEnvVar) ?? LocalStackConstants.DefaultTestSecretKey
+            );
             SqsClient = new AmazonSQSClient(credentials, config);
         }
 

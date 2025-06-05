@@ -32,9 +32,8 @@ namespace CloudNimble.WebJobs.Extensions.Tests.Amazon.SQS
             options.MessageEncoding.Should().Be(QueueMessageEncoding.Base64);
 
             // SQS-specific defaults
-            options.AccessKey.Should().BeNull();
+            options.Profile.Should().BeNull();
             options.Region.Should().BeNull();
-            options.SecretKey.Should().BeNull();
             options.ServiceUrl.Should().BeNull();
             options.UseFifo.Should().BeFalse();
             options.MessageGroupId.Should().Be("default");
@@ -48,18 +47,16 @@ namespace CloudNimble.WebJobs.Extensions.Tests.Amazon.SQS
             var options = new SQSOptions();
 
             // Act
-            options.AccessKey = "test-access-key";
+            options.Profile = "test-profile";
             options.Region = "us-east-1";
-            options.SecretKey = "test-secret-key";
             options.ServiceUrl = "http://localhost:4566";
             options.UseFifo = true;
             options.MessageGroupId = "test-group";
             options.UseContentBasedDeduplication = true;
 
             // Assert
-            options.AccessKey.Should().Be("test-access-key");
+            options.Profile.Should().Be("test-profile");
             options.Region.Should().Be("us-east-1");
-            options.SecretKey.Should().Be("test-secret-key");
             options.ServiceUrl.Should().Be("http://localhost:4566");
             options.UseFifo.Should().BeTrue();
             options.MessageGroupId.Should().Be("test-group");
@@ -98,9 +95,8 @@ namespace CloudNimble.WebJobs.Extensions.Tests.Amazon.SQS
                 MessageEncoding = QueueMessageEncoding.None,
                 
                 // SQS properties
-                AccessKey = "test-access-key",
+                Profile = "test-profile",
                 Region = "us-west-2",
-                SecretKey = "test-secret-key",
                 ServiceUrl = "http://localhost:4566",
                 UseFifo = true,
                 MessageGroupId = "test-group",
@@ -119,9 +115,8 @@ namespace CloudNimble.WebJobs.Extensions.Tests.Amazon.SQS
             clone.MessageEncoding.Should().Be(original.MessageEncoding);
             
             // SQS properties
-            clone.AccessKey.Should().Be(original.AccessKey);
+            clone.Profile.Should().Be(original.Profile);
             clone.Region.Should().Be(original.Region);
-            clone.SecretKey.Should().Be(original.SecretKey);
             clone.ServiceUrl.Should().Be(original.ServiceUrl);
             clone.UseFifo.Should().Be(original.UseFifo);
             clone.MessageGroupId.Should().Be(original.MessageGroupId);
@@ -134,28 +129,27 @@ namespace CloudNimble.WebJobs.Extensions.Tests.Amazon.SQS
             // Arrange
             var original = new SQSOptions
             {
-                AccessKey = "original-key",
+                Profile = "original-profile",
                 MessageGroupId = "original-group"
             };
 
             // Act
             var clone = original.Clone();
-            clone.AccessKey = "modified-key";
+            clone.Profile = "modified-profile";
             clone.MessageGroupId = "modified-group";
 
             // Assert
-            original.AccessKey.Should().Be("original-key");
+            original.Profile.Should().Be("original-profile");
             original.MessageGroupId.Should().Be("original-group");
         }
 
         [TestMethod]
-        public void IOptionsFormatter_Format_MasksSensitiveData()
+        public void IOptionsFormatter_Format_IncludesAllProperties()
         {
             // Arrange
             var options = new SQSOptions
             {
-                AccessKey = "AKIAIOSFODNN7EXAMPLE",
-                SecretKey = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+                Profile = "test-profile",
                 Region = "us-east-1",
                 ServiceUrl = "http://localhost:4566"
             };
@@ -163,30 +157,19 @@ namespace CloudNimble.WebJobs.Extensions.Tests.Amazon.SQS
             // Act
             var formatted = ((IOptionsFormatter)options).Format();
             
-            // First, let's see what the actual format is
+            // Assert
             formatted.Should().NotBeNullOrEmpty();
             
-            // Parse with JsonSerializerOptions that handle camelCase
-            var jsonOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
             using var json = JsonDocument.Parse(formatted);
 
-            // Assert - check if properties exist first
-            if (json.RootElement.TryGetProperty("AccessKey", out var accessKey))
+            // Check if properties exist (case-insensitive)
+            if (json.RootElement.TryGetProperty("Profile", out var profile))
             {
-                accessKey.GetString().Should().Be("***MASKED***");
+                profile.GetString().Should().Be("test-profile");
             }
-            else if (json.RootElement.TryGetProperty("accessKey", out accessKey))
+            else if (json.RootElement.TryGetProperty("profile", out profile))
             {
-                accessKey.GetString().Should().Be("***MASKED***");
-            }
-
-            if (json.RootElement.TryGetProperty("SecretKey", out var secretKey))
-            {
-                secretKey.GetString().Should().Be("***MASKED***");
-            }
-            else if (json.RootElement.TryGetProperty("secretKey", out secretKey))
-            {
-                secretKey.GetString().Should().Be("***MASKED***");
+                profile.GetString().Should().Be("test-profile");
             }
 
             if (json.RootElement.TryGetProperty("Region", out var region))
@@ -209,13 +192,12 @@ namespace CloudNimble.WebJobs.Extensions.Tests.Amazon.SQS
         }
 
         [TestMethod]
-        public void IOptionsFormatter_Format_HandlesNullCredentials()
+        public void IOptionsFormatter_Format_HandlesNullProfile()
         {
             // Arrange
             var options = new SQSOptions
             {
-                AccessKey = null,
-                SecretKey = null,
+                Profile = null,
                 Region = "us-east-1"
             };
 
@@ -224,13 +206,12 @@ namespace CloudNimble.WebJobs.Extensions.Tests.Amazon.SQS
             using var json = JsonDocument.Parse(formatted);
 
             // Assert - With JsonIgnoreCondition.WhenWritingNull, null values won't be serialized
-            formatted.Should().NotContain("accessKey");  // null values are omitted
-            formatted.Should().NotContain("secretKey");  // null values are omitted
+            formatted.Should().NotContain("profile");  // null values are omitted
             formatted.Should().Contain("us-east-1");
         }
 
         [TestMethod]
-        public void IOptionsFormatter_Format_IncludesAllProperties()
+        public void IOptionsFormatter_Format_IncludesBaseProperties()
         {
             // Arrange
             var options = new SQSOptions
