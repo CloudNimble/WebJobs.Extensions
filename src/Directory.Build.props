@@ -10,6 +10,8 @@
 		<IsTemplateProject Condition="$(MSBuildProjectName.ToLower().Contains('.templates.'))">true</IsTemplateProject>
 		<IsToolsProject Condition="$(MSBuildProjectName.ToLower().EndsWith('.tools'))">true</IsToolsProject>
 		<IsPrimaryProject Condition=" '$(IsBenchmarkProject)' != 'true' And '$(IsTestProject)' != 'true' And '$(IsTestAssetProject)' != 'true' And '$(IsSampleProject)' != 'true' And '$(IsTemplateProject)' != 'true' And '$(IsToolsProject)' != 'true' ">true</IsPrimaryProject>
+		<IncludeReadmeFile Condition="Exists('$(MSBuildProjectDirectory)\readme.md')">true</IncludeReadmeFile>
+
 
 		<IncludeSource>false</IncludeSource>
 		<IncludeSymbols>true</IncludeSymbols>
