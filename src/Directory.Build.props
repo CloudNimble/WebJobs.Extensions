@@ -36,9 +36,8 @@
 		<RpmPackageVendor>CloudNimble</RpmPackageVendor>
 		<Copyright>Copyright © 2025 CloudNimble, Inc. All rights reserved.</Copyright>
 		<NeutralLanguage>en-US</NeutralLanguage>
-
-		<!-- The SPDX name for the source license. See https://spdx.org/licenses/. -->
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<PackageReadmeFile Condition="$(IncludeReadmeFile) == 'true'">readme.md</PackageReadmeFile>
 
 		<!-- Suppress warnings about using SemVer 2.0. -->
 		<NoWarn>$(NoWarn);NU5048</NoWarn>

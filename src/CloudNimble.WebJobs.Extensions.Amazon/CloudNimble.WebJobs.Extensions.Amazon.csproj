@@ -13,12 +13,16 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <Folder Include="EventBridge\" />
-	  <Folder Include="SNS\" />
+		<Folder Include="EventBridge\" />
+		<Folder Include="SNS\" />
 	</ItemGroup>
 
 	<ItemGroup>
-	  <ProjectReference Include="..\CloudNimble.WebJobs.Extensions.Common\CloudNimble.WebJobs.Extensions.Common.csproj" />
+		<ProjectReference Include="..\CloudNimble.WebJobs.Extensions.Common\CloudNimble.WebJobs.Extensions.Common.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<None Include="$(MSBuildThisFileDirectory)AWSLogo.png" Pack="true" PackagePath="\" Condition="'$(IsTestProject)' != 'true'" />
 	</ItemGroup>
 
 </Project>
