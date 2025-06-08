@@ -11,6 +11,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<InternalsVisibleTo Include="CloudNimble.WebJobs.Extensions.Amazon" />
+		<InternalsVisibleTo Include="CloudNimble.WebJobs.Extensions.Amazon, $(StrongNamePublicKey)" />
 	</ItemGroup>
 </Project>

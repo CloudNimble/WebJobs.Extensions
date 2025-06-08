@@ -17,10 +17,11 @@
 		<PublishRepositoryUrl>true</PublishRepositoryUrl>
 		<EmbedUntrackedSources>true</EmbedUntrackedSources>
 
-		<!--<SignAssembly>true</SignAssembly>
-		<AssemblyOriginatorKeyFile>$(MSBuildThisFileDirectory)simplemessagebus.snk</AssemblyOriginatorKeyFile>-->
+		<SignAssembly>true</SignAssembly>
+		<AssemblyOriginatorKeyFile>$(MSBuildThisFileDirectory)amazonwebjobs.snk</AssemblyOriginatorKeyFile>
+		<StrongNamePublicKey>PublicKey=0024000004800000940000000602000000240000525341310004000001000100e510e0bf5865819394e5a22fd487ef16e0cdbe605664edbfe7901881606bbef33f24b6834f91fa93402db8b7bc86dafa26230937577639713956870f15d140512734802e8e29cebd2cef0451d8297eae1ce0038d8b61c95d4d1d0a56e2fe220603d6e25a29ddff759babd2b6bf8dd56cb06acf0c762127d94bb2837ecce9dcb5</StrongNamePublicKey>
 
-		<LangVersion>12.0</LangVersion>
+		<LangVersion>latest</LangVersion>
 	</PropertyGroup>
 
 	<PropertyGroup>
@@ -97,13 +98,13 @@
 	</ItemGroup>
 
 	<PropertyGroup>
-		<StandardTestTfms>net472;net9.0;net8.0;net6.0;</StandardTestTfms>
+		<StandardTestTfms>net10.0;net9.0;net8.0;</StandardTestTfms>
 	</PropertyGroup>
 
 	<ItemGroup Condition=" $(IsTestProject) != 'true' and  $(IsSampleProject) != 'true'">
 		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.*" PrivateAssets="All" />
 		<PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.*" PrivateAssets="All" />
-		<InternalsVisibleTo Include="$(AssemblyName.Replace('CloudNimble.WebJobs.Extensions', 'CloudNimble.WebJobs.Extensions.Tests'))" /> <!--, $(StrongNamePublicKey)" /> -->
+		<InternalsVisibleTo Include="$(AssemblyName.Replace('CloudNimble.WebJobs.Extensions', 'CloudNimble.WebJobs.Extensions.Tests')), $(StrongNamePublicKey)" />
 	</ItemGroup>
 
 	<ItemGroup Condition=" $(IsTestProject) == 'true'  and  $(IsSampleProject) != 'true'">
